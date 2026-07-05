@@ -1,20 +1,45 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+// App.js
+// Punto de entrada de la aplicación.
+// Controla el estado de autenticación (simulado) y monta el navegador principal.
+
+import React, { useState } from 'react';
+import { StatusBar } from 'react-native';
+import LoginScreen from './screens/auth/LoginScreen';
+import RecuperarPasswordScreen from './screens/auth/RecuperarPasswordScreen';
+import AppNavigator from './navigation/AppNavigator';
+import colors from './theme/colors';
 
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [authScreen, setAuthScreen] = useState('login'); // 'login' | 'recuperar'
+
+  const handleLoginSuccess = (foundUser) => setUser(foundUser);
+  const handleLogout = () => {
+    setUser(null);
+    setAuthScreen('login');
+  };
+
+  if (!user) {
+    if (authScreen === 'recuperar') {
+      return (
+        <>
+          <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+          <RecuperarPasswordScreen onBack={() => setAuthScreen('login')} />
+        </>
+      );
+    }
+    return (
+      <>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        <LoginScreen onLoginSuccess={handleLoginSuccess} onGoToRecover={() => setAuthScreen('recuperar')} />
+      </>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primaryDark} />
+      <AppNavigator user={user} onLogout={handleLogout} />
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
