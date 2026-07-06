@@ -14,6 +14,7 @@ import {
   Alert,
   Platform,
   StyleSheet,
+  Image,
 } from 'react-native';
 import colors from '../../theme/colors';
 import fonts from '../../theme/fonts';
@@ -63,9 +64,10 @@ export default function LoginScreen({ onLoginSuccess, onGoToRecover }) {
       >
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.brandBlock}>
-            <IconCircle symbol="⚖" bg={colors.primaryLight} fg={colors.primary} size={64} />
+            <Image source={require('../../assets/logo.png')} style={{ width: 90, height: 90, resizeMode: 'contain' }}
+            />
             <Text style={styles.appName}>Sistema Integral de Gestión{'\n'}y Control Documental</Text>
-            <Text style={styles.appTagline}>Procesos de nulidad matrimonial</Text>
+            <Text style={styles.appTagline}>Doc_Hub</Text>
           </View>
 
           <View style={styles.formCard}>
