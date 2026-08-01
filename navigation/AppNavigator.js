@@ -1,11 +1,12 @@
-// navigation/AppNavigator.js
-// Navegación manual implementada con useState (sin librerías externas de navegación).
+﻿// navigation/AppNavigator.js
+// NavegaciÃ³n manual implementada con useState (sin librerÃ­as externas de navegaciÃ³n).
 // Combina: tabs inferiores (root screens) + stack de pantallas de detalle.
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import BottomTabBar from '../components/BottomTabBar';
 import { ROLE_DASHBOARD, ROLE_PERMISSIONS } from './roleConfig';
+import { getNotificacionesContador, listSolicitudesFirma } from '../services/api';
 
 // Dashboards por rol
 import DashboardJuez from '../screens/juez/DashboardScreen';
@@ -48,27 +49,60 @@ const STACK_SCREENS = {
   Perfil: PerfilScreen,
 };
 
-export default function AppNavigator({ user, onLogout }) {
-  const permisos = ROLE_PERMISSIONS[user.role];
+export default function AppNavigator({ user, onLogout, onUserUpdate }) {
+  const permisos = { ...(ROLE_PERMISSIONS[user.role] || {}), ...(user.permissions || {}) };
   const tabsVisibles = permisos.tabs; // ej. Testigo no incluye 'documentos'
   const [activeTab, setActiveTab] = useState('inicio');
   const [stack, setStack] = useState([]); // [{ screen, params }]
+  const [badges, setBadges] = useState({});
 
   const navigation = useMemo(
     () => ({
       navigate: (screen, params = {}) => setStack((prev) => [...prev, { screen, params }]),
       goBack: () => setStack((prev) => prev.slice(0, -1)),
       popToTab: () => setStack([]),
+      goHome: () => {
+        setActiveTab('inicio');
+        setStack([]);
+      },
     }),
     []
   );
 
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadBadges() {
+      const next = {};
+      try {
+        if (tabsVisibles.includes('avisos')) {
+          const contador = await getNotificacionesContador();
+          next.avisos = contador.noLeidas ?? contador.total ?? 0;
+        }
+
+        if (tabsVisibles.includes('firma')) {
+          const solicitudes = await listSolicitudesFirma();
+          next.firma = solicitudes.filter((item) => item.estado === 'Pendiente').length;
+        }
+      } catch (err) {
+        next.avisos = 0;
+        next.firma = 0;
+      }
+
+      if (mounted) setBadges(next);
+    }
+
+    loadBadges();
+    return () => {
+      mounted = false;
+    };
+  }, [tabsVisibles, activeTab, stack.length]);
   const handleChangeTab = (tabKey) => {
     setActiveTab(tabKey);
-    setStack([]); // al cambiar de tab, regresamos a la raíz de ese tab
+    setStack([]); // al cambiar de tab, regresamos a la raÃ­z de ese tab
   };
 
-  // --- Si hay pantallas apiladas, mostramos la última (detalle) ---
+  // --- Si hay pantallas apiladas, mostramos la Ãºltima (detalle) ---
   if (stack.length > 0) {
     const top = stack[stack.length - 1];
     const ScreenComponent = STACK_SCREENS[top.screen];
@@ -80,13 +114,14 @@ export default function AppNavigator({ user, onLogout }) {
             route={{ params: top.params }}
             user={user}
             onLogout={onLogout}
+            onUserUpdate={onUserUpdate}
           />
         </View>
       </View>
     );
   }
 
-  // --- Raíz según el tab activo ---
+  // --- RaÃ­z segÃºn el tab activo ---
   const renderTabRoot = () => {
     switch (activeTab) {
       case 'inicio': {
@@ -104,9 +139,6 @@ export default function AppNavigator({ user, onLogout }) {
     }
   };
 
-  const badges = {};
-  if (tabsVisibles.includes('avisos')) badges.avisos = 2;
-  if (tabsVisibles.includes('firma')) badges.firma = 2;
 
   return (
     <View style={styles.flex}>
@@ -124,3 +156,10 @@ export default function AppNavigator({ user, onLogout }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
 });
+
+
+
+
+
+
+

@@ -1,4 +1,4 @@
-// screens/parte/DashboardScreen.js
+﻿// screens/parte/DashboardScreen.js
 // Pantalla 3: Dashboard - Parte.
 // Carga documentos personales, consulta su expediente y firma cuando se le solicita.
 
@@ -10,21 +10,14 @@ export default function DashboardScreenParte({ user, navigation, onLogout }) {
   const quickActions = [
     {
       label: 'Mi expediente',
-      symbol: '📁',
+      symbol: 'ðŸ“',
       bg: colors.infoBg,
       fg: colors.info,
       onPress: () => navigation.navigate('ExpedientesList'),
     },
     {
-      label: 'Subir documento',
-      symbol: '⬆',
-      bg: colors.successBg,
-      fg: colors.success,
-      onPress: () => navigation.navigate('CargaDocumento'),
-    },
-    {
       label: 'Firmar documentos',
-      symbol: '✎',
+      symbol: 'âœŽ',
       bg: colors.purpleBg,
       fg: colors.purple,
       onPress: () => navigation.navigate('SolicitudesFirma'),
@@ -35,3 +28,4 @@ export default function DashboardScreenParte({ user, navigation, onLogout }) {
     <DashboardBase user={user} navigation={navigation} onLogout={onLogout} quickActions={quickActions} />
   );
 }
+

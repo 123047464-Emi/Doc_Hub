@@ -1,27 +1,49 @@
-// screens/TrazabilidadScreen.js
-// Pantalla 11: Trazabilidad. Historial de acciones (timeline) de un expediente.
-
-import React from 'react';
-import { SafeAreaView, ScrollView, View, Text, StyleSheet } from 'react-native';
+﻿import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, RefreshControl, SafeAreaView, ScrollView, View, StyleSheet } from 'react-native';
 import colors from '../theme/colors';
-import fonts from '../theme/fonts';
 import spacing from '../theme/spacing';
 import globalStyles from '../theme/globalStyles';
 import ScreenHeader from '../components/ScreenHeader';
 import TimelineItem from '../components/TimelineItem';
 import EmptyState from '../components/EmptyState';
-import { TRAZABILIDAD } from '../data/mockData';
+import { listDocumentoTrazabilidad, listExpedienteTrazabilidad } from '../services/api';
 
 export default function TrazabilidadScreen({ route, navigation }) {
-  const { expedienteId } = route.params;
-  const historial = TRAZABILIDAD[expedienteId] || [];
+  const { expedienteId, documentoId, documentoNombre } = route.params || {};
+  const [historial, setHistorial] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const loadHistorial = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = documentoId
+        ? await listDocumentoTrazabilidad(documentoId)
+        : await listExpedienteTrazabilidad(expedienteId);
+      setHistorial(data.map(mapTraceItem));
+    } catch (err) {
+      Alert.alert('No se pudo cargar trazabilidad', err.message || 'Intenta de nuevo.');
+    } finally {
+      setLoading(false);
+    }
+  }, [documentoId, expedienteId]);
+
+  useEffect(() => {
+    loadHistorial();
+  }, [loadHistorial]);
+
+  const subtitle = documentoId
+    ? documentoNombre || `Documento #${documentoId}`
+    : `Exp. #${expedienteId}`;
 
   return (
     <SafeAreaView style={globalStyles.screen}>
-      <ScreenHeader title="Trazabilidad" subtitle={`Exp. #${expedienteId}`} onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={globalStyles.screenContent}>
+      <ScreenHeader title="Trazabilidad" subtitle={subtitle} onBack={() => navigation.goBack()} />
+      <ScrollView
+        contentContainerStyle={globalStyles.screenContent}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={loadHistorial} />}
+      >
         {historial.length === 0 ? (
-          <EmptyState icon="🕓" title="Sin historial" message="Este expediente aún no tiene movimientos registrados." />
+          <EmptyState icon="LOG" title="Sin historial" message="Aun no hay movimientos registrados." />
         ) : (
           <View style={styles.timelineWrap}>
             {historial.map((item, idx) => (
@@ -32,6 +54,30 @@ export default function TrazabilidadScreen({ route, navigation }) {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+function mapTraceItem(item) {
+  return {
+    id: String(item.id),
+    actor: `${item.usuarioNombre || 'Sistema'} (${item.rol || 'sin rol'})`,
+    accion: formatAction(item),
+    fecha: item.fecha || '-',
+    tipo: traceType(item.accion),
+  };
+}
+
+function formatAction(item) {
+  const base = String(item.accion || 'accion').replace(/_/g, ' ');
+  const extra = item.detalle ? ` - ${item.detalle}` : '';
+  return `${base}${extra}`;
+}
+
+function traceType(action = '') {
+  if (action.includes('firma')) return 'firma';
+  if (action.includes('aprobar')) return 'aprobacion';
+  if (action.includes('rechazar')) return 'rechazo';
+  if (action.includes('crear')) return 'creacion';
+  return 'subida';
 }
 
 const styles = StyleSheet.create({

@@ -1,7 +1,4 @@
-// screens/auth/LoginScreen.js
-// Pantalla 1: Inicio de sesión (simulado con datos mock, sin backend real).
-
-import React, { useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView,
   KeyboardAvoidingView,
@@ -10,7 +7,6 @@ import {
   Text,
   TextInput,
   Pressable,
-  ActivityIndicator,
   Alert,
   Platform,
   StyleSheet,
@@ -21,39 +17,65 @@ import fonts from '../../theme/fonts';
 import spacing from '../../theme/spacing';
 import globalStyles from '../../theme/globalStyles';
 import AppButton from '../../components/AppButton';
-import IconCircle from '../../components/IconCircle';
-import { USERS, ROLE_LABELS } from '../../data/mockData';
+import { listDemoUsers, login } from '../../services/api';
+
+const FALLBACK_USERS = [
+  { username: 'juez', password: '1234', categoria: 'Juez' },
+  { username: 'notario', password: '1234', categoria: 'Notario' },
+  { username: 'abogado', password: '1234', categoria: 'Abogado' },
+  { username: 'parte', password: '1234', categoria: 'Parte' },
+  { username: 'testigo', password: '1234', categoria: 'Testigo' },
+];
 
 export default function LoginScreen({ onLoginSuccess, onGoToRecover }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [demoUsers, setDemoUsers] = useState(FALLBACK_USERS);
 
-  const handleLogin = () => {
+  useEffect(() => {
+    let mounted = true;
+
+    listDemoUsers()
+      .then((users) => {
+        if (mounted && Array.isArray(users) && users.length > 0) {
+          setDemoUsers(users.filter((user) => user.categoria !== 'Administrador'));
+        }
+      })
+      .catch(() => {
+        setDemoUsers(FALLBACK_USERS);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
-      Alert.alert('Campos incompletos', 'Ingresa tu usuario y contraseña para continuar.');
+      Alert.alert('Campos incompletos', 'Ingresa tu usuario y contrasena para continuar.');
       return;
     }
+
     setLoading(true);
-    // Simulación de autenticación contra datos mock
-    setTimeout(() => {
-      setLoading(false);
-      const found = USERS.find(
-        (u) => u.username.toLowerCase() === username.trim().toLowerCase() && u.password === password
-      );
-      if (found) {
-        onLoginSuccess(found);
-      } else {
-        Alert.alert('Credenciales inválidas', 'Usuario o contraseña incorrectos.');
+    try {
+      const user = await login(username.trim(), password);
+      if (user.role === 'administrador') {
+        Alert.alert('Acceso web', 'Los administradores deben ingresar desde la aplicacion web.');
+        return;
       }
-    }, 900);
+      onLoginSuccess(user);
+    } catch (err) {
+      Alert.alert('No se pudo iniciar sesion', err.message || 'Usuario o contrasena incorrectos.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const quickLogin = (role) => {
-    const found = USERS.find((u) => u.role === role);
-    setUsername(found.username);
-    setPassword(found.password);
+  const quickLogin = (user) => {
+    setUsername(user.username);
+    setPassword(user.password || '1234');
   };
 
   return (
@@ -64,20 +86,22 @@ export default function LoginScreen({ onLoginSuccess, onGoToRecover }) {
       >
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.brandBlock}>
-            <Image source={require('../../assets/logo.png')} style={{ width: 90, height: 90, resizeMode: 'contain' }}
+            <Image
+              source={require('../../assets/logo.png')}
+              style={{ width: 90, height: 90, resizeMode: 'contain' }}
             />
-            <Text style={styles.appName}>Sistema Integral de Gestión{'\n'}y Control Documental</Text>
-            <Text style={styles.appTagline}>Doc_Hub</Text>
+            <Text style={styles.appName}>Sistema Integral de Gestion{'\n'}y Control Documental</Text>
+            <Text style={styles.appTagline}>Doc Hub</Text>
           </View>
 
           <View style={styles.formCard}>
-            <Text style={globalStyles.sectionTitle}>Iniciar sesión</Text>
+            <Text style={globalStyles.sectionTitle}>Iniciar sesion</Text>
 
             <View style={globalStyles.inputGroup}>
               <Text style={globalStyles.inputLabel}>Usuario</Text>
               <TextInput
                 style={globalStyles.input}
-                placeholder="usuario123"
+                placeholder="juez"
                 placeholderTextColor={colors.textMuted}
                 autoCapitalize="none"
                 value={username}
@@ -86,17 +110,17 @@ export default function LoginScreen({ onLoginSuccess, onGoToRecover }) {
             </View>
 
             <View style={globalStyles.inputGroup}>
-              <Text style={globalStyles.inputLabel}>Contraseña</Text>
+              <Text style={globalStyles.inputLabel}>Contrasena</Text>
               <View style={styles.passwordRow}>
                 <TextInput
                   style={[globalStyles.input, styles.passwordInput]}
-                  placeholder="••••••••"
+                  placeholder="1234"
                   placeholderTextColor={colors.textMuted}
                   secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={setPassword}
                 />
-                <Pressable style={styles.eyeBtn} onPress={() => setShowPassword((v) => !v)}>
+                <Pressable style={styles.eyeBtn} onPress={() => setShowPassword((value) => !value)}>
                   <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 12 }}>
                     {showPassword ? 'Ocultar' : 'Ver'}
                   </Text>
@@ -105,22 +129,22 @@ export default function LoginScreen({ onLoginSuccess, onGoToRecover }) {
             </View>
 
             <Pressable onPress={onGoToRecover} style={{ alignSelf: 'flex-end', marginBottom: spacing.lg }}>
-              <Text style={styles.link}>¿Olvidaste tu contraseña?</Text>
+              <Text style={styles.link}>Olvidaste tu contrasena?</Text>
             </Pressable>
 
             <AppButton label="Ingresar" onPress={handleLogin} loading={loading} />
 
-            <Text style={styles.demoTitle}>Acceso rápido de demostración</Text>
+            <Text style={styles.demoTitle}>Acceso rapido de demostracion</Text>
             <View style={styles.roleChipsRow}>
-              {Object.keys(ROLE_LABELS).map((role) => (
-                <Pressable key={role} style={styles.roleChip} onPress={() => quickLogin(role)}>
-                  <Text style={styles.roleChipText}>{ROLE_LABELS[role]}</Text>
+              {demoUsers.map((user) => (
+                <Pressable key={user.username} style={styles.roleChip} onPress={() => quickLogin(user)}>
+                  <Text style={styles.roleChipText}>{user.categoria}</Text>
                 </Pressable>
               ))}
             </View>
           </View>
 
-          <Text style={styles.footerText}>Contraseña de prueba para todos los roles: 1234</Text>
+          <Text style={styles.footerText}>Contrasena de prueba para todos: 1234</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -179,3 +203,5 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
 });
+
+

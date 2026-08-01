@@ -1,11 +1,17 @@
-// components/ScreenHeader.js
-// Encabezado azul reutilizable, con botón de regreso opcional y acción a la derecha.
-
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import globalStyles from '../theme/globalStyles';
 
+const ICON_LABELS = {
+  Perfil: '👤',
+  Abrir: '↗',
+  Editar: '✎',
+  Cancelar: '×',
+};
+
 export default function ScreenHeader({ title, subtitle, onBack, rightIcon, onRightPress }) {
+  const icon = ICON_LABELS[rightIcon] || rightIcon;
+
   return (
     <View style={globalStyles.header}>
       <View style={[globalStyles.headerRow, { justifyContent: 'space-between' }]}>
@@ -21,8 +27,8 @@ export default function ScreenHeader({ title, subtitle, onBack, rightIcon, onRig
           </View>
         </View>
         {rightIcon ? (
-          <Pressable style={globalStyles.headerBackBtn} onPress={onRightPress}>
-            <Text style={{ fontSize: 16 }}>{rightIcon}</Text>
+          <Pressable style={globalStyles.headerBackBtn} onPress={onRightPress} accessibilityLabel={String(rightIcon)}>
+            <Text style={{ fontSize: 18 }}>{icon}</Text>
           </Pressable>
         ) : null}
       </View>

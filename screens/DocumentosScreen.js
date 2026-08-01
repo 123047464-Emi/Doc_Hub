@@ -1,9 +1,5 @@
-// screens/DocumentosScreen.js
-// Pantalla 6: Documentos del expediente (lista con estado y versión).
-// RF-06: los documentos y acciones disponibles varían según el rol del usuario.
-
-import React, { useState } from 'react';
-import { SafeAreaView, View, Text, FlatList, Pressable, Alert, StyleSheet } from 'react-native';
+﻿import React, { useCallback, useEffect, useState } from 'react';
+import { SafeAreaView, View, Text, FlatList, Pressable, Alert, Modal, TextInput, StyleSheet, RefreshControl } from 'react-native';
 import colors from '../theme/colors';
 import fonts from '../theme/fonts';
 import spacing from '../theme/spacing';
@@ -13,65 +9,94 @@ import Card from '../components/Card';
 import StatusBadge from '../components/StatusBadge';
 import IconCircle from '../components/IconCircle';
 import EmptyState from '../components/EmptyState';
-import { DOCUMENTOS } from '../data/mockData';
+import AppButton from '../components/AppButton';
 import { ROLE_PERMISSIONS } from '../navigation/roleConfig';
+import { listDocumentos, updateDocumentoEstado } from '../services/api';
 
 const FILTERS = [
   { key: 'Todos', label: 'Todos' },
   { key: 'Pendiente firma', label: 'Pendiente firma' },
   { key: 'Autorizado', label: 'Autorizados' },
+  { key: 'Subido', label: 'Subidos' },
 ];
 
 const TIPO_ICON = {
-  pdf: { symbol: '📄', bg: colors.dangerBg, fg: colors.danger },
-  img: { symbol: '🖼', bg: colors.successBg, fg: colors.success },
-  doc: { symbol: '📝', bg: colors.infoBg, fg: colors.info },
+  pdf: { symbol: 'PDF', bg: colors.dangerBg, fg: colors.danger },
+  doc: { symbol: 'DOC', bg: colors.infoBg, fg: colors.info },
+  docx: { symbol: 'DOC', bg: colors.infoBg, fg: colors.info },
 };
 
 export default function DocumentosScreen({ route, navigation, user }) {
   const { expedienteId } = route.params;
-  const permisos = ROLE_PERMISSIONS[user.role];
+  const permisos = { ...(ROLE_PERMISSIONS[user.role] || {}), ...(user.permissions || {}) };
   const [filter, setFilter] = useState('Todos');
-  const [documentos, setDocumentos] = useState(DOCUMENTOS[expedienteId] || []);
+  const [documentos, setDocumentos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [rechazoDoc, setRechazoDoc] = useState(null);
+  const [motivoRechazo, setMotivoRechazo] = useState('');
 
-  // RF-06: "Parte" solo puede visualizar documentación ya autorizada.
+  const loadDocumentos = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await listDocumentos(expedienteId);
+      setDocumentos(data);
+    } catch (err) {
+      Alert.alert('No se pudieron cargar documentos', err.message || 'Revisa la conexion con la API.');
+    } finally {
+      setLoading(false);
+    }
+  }, [expedienteId]);
+
+  useEffect(() => {
+    loadDocumentos();
+  }, [loadDocumentos]);
+
   const documentosVisibles = permisos.soloDocumentosAutorizados
-    ? documentos // se muestran todos (para dar seguimiento), pero el acceso al visor se restringe al abrir
+    ? documentos.filter((item) => item.estado === 'Autorizado' || item.estado === 'Pendiente firma' || item.estado === 'Rechazado')
     : documentos;
 
-  const filtered = documentosVisibles.filter((d) => filter === 'Todos' || d.estado === filter);
+  const filtered = documentosVisibles.filter((item) => filter === 'Todos' || item.estado === filter);
 
-  const handleAprobar = (id) => {
-    setDocumentos((prev) => prev.map((d) => (d.id === id ? { ...d, estado: 'Autorizado' } : d)));
-    Alert.alert('Documento autorizado', 'El documento fue aprobado correctamente.');
+  const changeEstado = async (id, estado, motivo) => {
+    try {
+      const actualizado = await updateDocumentoEstado(id, estado, motivo);
+      setDocumentos((prev) => prev.map((item) => (item.id === id ? actualizado : item)));
+      Alert.alert('Documento actualizado', `El documento fue marcado como ${estado}.`);
+    } catch (err) {
+      Alert.alert('No se pudo actualizar', err.message || 'Intenta de nuevo.');
+    }
   };
 
-  const handleRechazar = (id) => {
-    Alert.alert('Rechazar documento', '¿Confirmas que deseas rechazar este documento?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Rechazar',
-        style: 'destructive',
-        onPress: () => {
-          setDocumentos((prev) => prev.map((d) => (d.id === id ? { ...d, estado: 'Rechazado' } : d)));
-        },
-      },
-    ]);
+  const handleRechazar = (documento) => {
+    setRechazoDoc(documento);
+    setMotivoRechazo('');
+  };
+
+  const confirmarRechazo = async () => {
+    const motivo = motivoRechazo.trim();
+    if (!motivo) {
+      Alert.alert('Motivo requerido', 'Escribe por que se rechaza el documento para que pueda corregirse.');
+      return;
+    }
+
+    await changeEstado(rechazoDoc.id, 'Rechazado', motivo);
+    setRechazoDoc(null);
+    setMotivoRechazo('');
   };
 
   const handleOpen = (item) => {
-    // RF-06/08: "Parte" solo puede abrir el visor si el documento ya está autorizado.
-    if (permisos.soloDocumentosAutorizados && item.estado !== 'Autorizado' && item.estado !== 'Pendiente firma') {
+    if (permisos.soloDocumentosAutorizados && item.estado !== 'Autorizado' && item.estado !== 'Pendiente firma' && item.estado !== 'Rechazado') {
       Alert.alert(
-        'Documento en revisión',
-        'Este documento aún no ha sido autorizado, por lo que no puede visualizarse todavía.'
+        'Documento en revision',
+        'Este documento aun no ha sido autorizado, por lo que no puede visualizarse todavia.'
       );
       return;
     }
+
     if (item.estado === 'Pendiente firma' && permisos.puedeFirmar) {
       navigation.navigate('FirmaDigital', { documento: item, expedienteId });
     } else {
-      navigation.navigate('VisorDocumento', { documento: item });
+      navigation.navigate('VisorDocumento', { documento: item, onChanged: loadDocumentos });
     }
   };
 
@@ -79,22 +104,21 @@ export default function DocumentosScreen({ route, navigation, user }) {
     <SafeAreaView style={globalStyles.screen}>
       <ScreenHeader
         title="Documentos"
-        subtitle={`Exp. #${expedienteId} · ${documentos.length} archivos`}
+        subtitle={`Exp. #${expedienteId} - ${documentos.length} archivos`}
         onBack={() => navigation.goBack()}
-        // RF-07: el botón de carga solo se muestra a quien tiene permiso de subir (rol Parte).
-        rightIcon={permisos.puedeCargarDocumentos ? '⬆' : null}
-        onRightPress={() => navigation.navigate('CargaDocumento', { expedienteId })}
+        rightIcon={permisos.puedeCargarDocumentos ? '+' : null}
+        onRightPress={() => navigation.navigate('CargaDocumento', { expedienteId, onUploaded: loadDocumentos })}
       />
 
       <View style={styles.filterRow}>
-        {FILTERS.map((f) => (
+        {FILTERS.map((item) => (
           <Pressable
-            key={f.key}
-            style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
-            onPress={() => setFilter(f.key)}
+            key={item.key}
+            style={[styles.filterChip, filter === item.key && styles.filterChipActive]}
+            onPress={() => setFilter(item.key)}
           >
-            <Text style={[styles.filterChipText, filter === f.key && styles.filterChipTextActive]}>
-              {f.label}
+            <Text style={[styles.filterChipText, filter === item.key && styles.filterChipTextActive]}>
+              {item.label}
             </Text>
           </Pressable>
         ))}
@@ -102,22 +126,28 @@ export default function DocumentosScreen({ route, navigation, user }) {
 
       {permisos.soloDocumentosAutorizados && (
         <View style={styles.noticeBar}>
-          <Text style={styles.noticeText}>
-            Solo puedes visualizar por completo los documentos ya autorizados.
-          </Text>
+          <Text style={styles.noticeText}>Puedes ver autorizados, pendientes de firma y rechazados para enviar correcciones.</Text>
         </View>
       )}
 
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={loadDocumentos} />}
         contentContainerStyle={globalStyles.screenContent}
-        ListEmptyComponent={<EmptyState icon="▤" title="Sin documentos" message="No hay documentos con este filtro." />}
+        ListEmptyComponent={
+          <EmptyState
+            icon="DOC"
+            title={loading ? 'Cargando documentos' : 'Sin documentos'}
+            message={loading ? 'Consultando la API...' : 'No hay documentos con este filtro.'}
+          />
+        }
         renderItem={({ item }) => {
-          const iconInfo = TIPO_ICON[item.tipo] || TIPO_ICON.doc;
-          // RF-07 (actividad 7): aprobar/rechazar solo para roles con ese permiso, y solo si aún no fue resuelto.
+          const tipo = item.tipo || item.extension?.replace('.', '') || 'doc';
+          const iconInfo = TIPO_ICON[tipo] || TIPO_ICON.doc;
           const puedeValidarEsteDoc =
             permisos.puedeAprobarRechazar && (item.estado === 'Subido' || item.estado === 'Procesando OCR');
+
           return (
             <Card onPress={() => handleOpen(item)}>
               <View style={globalStyles.cardRow}>
@@ -125,7 +155,7 @@ export default function DocumentosScreen({ route, navigation, user }) {
                   <IconCircle symbol={iconInfo.symbol} bg={iconInfo.bg} fg={iconInfo.fg} size={40} />
                   <View style={{ marginLeft: spacing.md, flex: 1 }}>
                     <Text style={styles.docName} numberOfLines={1}>{item.nombre}</Text>
-                    <Text style={styles.docMeta}>{item.version} · {item.tamano}</Text>
+                    <Text style={styles.docMeta}>{item.version} - {item.tamanoTexto}</Text>
                   </View>
                 </View>
                 <StatusBadge status={item.estado} />
@@ -133,18 +163,47 @@ export default function DocumentosScreen({ route, navigation, user }) {
 
               {puedeValidarEsteDoc && (
                 <View style={styles.validationRow}>
-                  <Pressable style={[styles.validationBtn, styles.approveBtn]} onPress={() => handleAprobar(item.id)}>
-                    <Text style={styles.approveBtnText}>✓ Aprobar</Text>
+                  <Pressable style={[styles.validationBtn, styles.approveBtn]} onPress={() => changeEstado(item.id, 'Autorizado')}>
+                    <Text style={styles.approveBtnText}>Aprobar</Text>
                   </Pressable>
-                  <Pressable style={[styles.validationBtn, styles.rejectBtn]} onPress={() => handleRechazar(item.id)}>
-                    <Text style={styles.rejectBtnText}>✕ Rechazar</Text>
+                  <Pressable style={[styles.validationBtn, styles.rejectBtn]} onPress={() => handleRechazar(item)}>
+                    <Text style={styles.rejectBtnText}>Rechazar</Text>
                   </Pressable>
+                </View>
+              )}
+
+              {item.estado === 'Rechazado' && (
+                <View style={styles.rejectedBox}>
+                  <Text style={styles.rejectedText}>Motivo: {item.rechazoMotivo || 'Sin motivo especificado'}</Text>
+                  {permisos.puedeCargarDocumentos && (
+                    <Pressable style={styles.fixBtn} onPress={() => navigation.navigate('CargaDocumento', { expedienteId, documento: item, onUploaded: loadDocumentos })}>
+                      <Text style={styles.fixBtnText}>Subir correccion</Text>
+                    </Pressable>
+                  )}
                 </View>
               )}
             </Card>
           );
         }}
       />
+
+      <Modal visible={Boolean(rechazoDoc)} transparent animationType='fade' onRequestClose={() => setRechazoDoc(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Motivo del rechazo</Text>
+            <TextInput
+              style={[globalStyles.input, styles.motivoInput]}
+              value={motivoRechazo}
+              onChangeText={setMotivoRechazo}
+              placeholder='Explica que debe corregirse'
+              placeholderTextColor={colors.textMuted}
+              multiline
+            />
+            <AppButton label='Rechazar documento' variant='danger' onPress={confirmarRechazo} />
+            <AppButton label='Cancelar' variant='outline' onPress={() => setRechazoDoc(null)} style={{ marginTop: spacing.sm }} />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -152,6 +211,7 @@ export default function DocumentosScreen({ route, navigation, user }) {
 const styles = StyleSheet.create({
   filterRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.xs,
@@ -164,6 +224,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     marginRight: spacing.sm,
+    marginBottom: spacing.sm,
   },
   filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   filterChipText: { fontSize: fonts.size.sm, color: colors.textSecondary, fontWeight: fonts.weight.semibold },
@@ -184,4 +245,23 @@ const styles = StyleSheet.create({
   approveBtnText: { color: colors.success, fontWeight: fonts.weight.bold, fontSize: fonts.size.sm },
   rejectBtn: { backgroundColor: colors.dangerBg },
   rejectBtnText: { color: colors.danger, fontWeight: fonts.weight.bold, fontSize: fonts.size.sm },
+  rejectedBox: { marginTop: spacing.md, padding: spacing.sm, borderRadius: spacing.radius.md, backgroundColor: colors.dangerBg },
+  rejectedText: { color: colors.danger, fontSize: fonts.size.sm, fontWeight: fonts.weight.semibold },
+  fixBtn: { marginTop: spacing.sm, alignSelf: 'flex-start', paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: spacing.radius.md, backgroundColor: colors.surface },
+  fixBtnText: { color: colors.danger, fontSize: fonts.size.xs, fontWeight: fonts.weight.bold },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: spacing.xl },
+  modalCard: { backgroundColor: colors.surface, borderRadius: spacing.radius.lg, padding: spacing.xl },
+  modalTitle: { fontSize: fonts.size.lg, fontWeight: fonts.weight.bold, color: colors.textPrimary, marginBottom: spacing.md },
+  motivoInput: { minHeight: 90, textAlignVertical: 'top', marginBottom: spacing.md },
 });
+
+
+
+
+
+
+
+
+
+
+

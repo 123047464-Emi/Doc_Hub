@@ -1,9 +1,6 @@
-// screens/CargaDocumentoScreen.js
-// Pantalla 7: Carga de documentos. Simula selección desde cámara, galería o
-// explorador de archivos, con cola de subida y progreso (sin backend real).
-
-import React, { useState, useRef } from 'react';
-import { SafeAreaView, ScrollView, View, Text, Pressable, Modal, Switch, Alert, StyleSheet } from 'react-native';
+﻿import React, { useState } from 'react';
+import { SafeAreaView, ScrollView, View, Text, Pressable, Alert, StyleSheet } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import colors from '../theme/colors';
 import fonts from '../theme/fonts';
 import spacing from '../theme/spacing';
@@ -13,89 +10,106 @@ import Card from '../components/Card';
 import IconCircle from '../components/IconCircle';
 import ProgressBar from '../components/ProgressBar';
 import AppButton from '../components/AppButton';
-
-const MOCK_FILES = [
-  { name: 'declaracion_bienes.pdf', size: '3.2 MB' },
-  { name: 'acta_nacimiento_escaneada.jpg', size: '1.8 MB' },
-  { name: 'identificacion_oficial.jpg', size: '900 KB' },
-];
-
-let fileCounter = 0;
+import { updateDocumento, uploadDocumento } from '../services/api';
 
 export default function CargaDocumentoScreen({ route, navigation }) {
-  const expedienteId = route?.params?.expedienteId || 'DV-2024-0817';
-  const [menuVisible, setMenuVisible] = useState(false);
+  const expedienteId = route?.params?.expedienteId || 'GENERAL';
+  const documento = route?.params?.documento || null;
+  const onUploaded = route?.params?.onUploaded;
   const [queue, setQueue] = useState([]);
-  const [ocrEnabled, setOcrEnabled] = useState(true);
-  const intervalsRef = useRef({});
+  const [saving, setSaving] = useState(false);
 
-  const addFile = (source) => {
-    setMenuVisible(false);
-    const mock = MOCK_FILES[fileCounter % MOCK_FILES.length];
-    fileCounter += 1;
-    const id = `f_${Date.now()}_${fileCounter}`;
-    const newFile = { id, name: mock.name, size: mock.size, progress: 0, status: 'Subiendo', source };
-    setQueue((prev) => [...prev, newFile]);
+  const pickFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ],
+        multiple: !documento,
+        copyToCacheDirectory: true,
+      });
 
-    // Simulación de progreso de subida
-    const interval = setInterval(() => {
-      setQueue((prev) =>
-        prev.map((f) => {
-          if (f.id !== id) return f;
-          const next = Math.min(100, f.progress + Math.round(10 + Math.random() * 20));
-          return {
-            ...f,
-            progress: next,
-            status: next >= 100 ? 'Subido' : 'Subiendo',
-          };
-        })
-      );
-    }, 400);
-    intervalsRef.current[id] = interval;
+      if (result.canceled) return;
 
-    setTimeout(() => {
-      clearInterval(intervalsRef.current[id]);
-    }, 3500);
+      const files = result.assets.map((asset) => ({
+        id: `${asset.name}_${Date.now()}_${Math.random()}`,
+        name: asset.name,
+        size: asset.size || 0,
+        uri: asset.uri,
+        mimeType: asset.mimeType,
+        file: asset.file,
+        status: 'Listo',
+        progress: 0,
+      }));
+
+      setQueue((prev) => (documento ? files.slice(0, 1) : [...prev, ...files]));
+    } catch (err) {
+      Alert.alert('No se pudo seleccionar archivo', err.message || 'Intenta de nuevo.');
+    }
   };
 
   const removeFile = (id) => {
-    clearInterval(intervalsRef.current[id]);
-    setQueue((prev) => prev.filter((f) => f.id !== id));
+    setQueue((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const finishUpload = () => {
-    const pending = queue.filter((f) => f.status !== 'Subido');
+  const finishUpload = async () => {
     if (queue.length === 0) {
       Alert.alert('Sin archivos', 'Agrega al menos un archivo antes de continuar.');
       return;
     }
-    if (pending.length > 0) {
-      Alert.alert('Subida en curso', 'Espera a que todos los archivos terminen de subirse.');
-      return;
+
+    setSaving(true);
+    try {
+      for (const file of queue) {
+        setQueue((prev) => prev.map((item) => (item.id === file.id ? { ...item, status: 'Subiendo', progress: 50 } : item)));
+        if (documento?.id) {
+          await updateDocumento(documento.id, {
+            expedienteId,
+            nombre: file.name,
+            archivo: file,
+          });
+        } else {
+          await uploadDocumento({
+            expedienteId,
+            nombre: file.name,
+            archivo: file,
+          });
+        }
+        setQueue((prev) => prev.map((item) => (item.id === file.id ? { ...item, status: 'Subido', progress: 100 } : item)));
+      }
+
+      if (onUploaded) await onUploaded();
+
+      Alert.alert(documento ? 'Correccion enviada' : 'Documentos agregados', documento ? 'El archivo corregido quedo pendiente para revision del juez.' : 'Los archivos se guardaron correctamente en la API.', [
+        { text: 'Aceptar', onPress: () => navigation.goBack() },
+      ]);
+    } catch (err) {
+      Alert.alert('No se pudo subir', err.message || 'Revisa la conexion con la API.');
+    } finally {
+      setSaving(false);
     }
-    Alert.alert('Documentos agregados', 'Los archivos se agregaron correctamente al expediente.', [
-      { text: 'Aceptar', onPress: () => navigation.goBack() },
-    ]);
   };
 
   return (
     <SafeAreaView style={globalStyles.screen}>
-      <ScreenHeader title="Subir documento" subtitle={`Exp. #${expedienteId}`} onBack={() => navigation.goBack()} />
+      <ScreenHeader title={documento ? 'Subir correccion' : 'Subir documento'} subtitle={`Exp. #${expedienteId}`} onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={globalStyles.screenContent}>
-        <Pressable style={styles.dropZone} onPress={() => setMenuVisible(true)}>
-          <IconCircle symbol="⬆" bg={colors.primaryLight} fg={colors.primary} size={48} />
-          <Text style={styles.dropTitle}>Agregar más archivos</Text>
-          <Text style={styles.dropSubtitle}>Galería, cámara o explorador</Text>
+        <Pressable style={styles.dropZone} onPress={pickFile}>
+          <IconCircle symbol="+" bg={colors.primaryLight} fg={colors.primary} size={48} />
+          <Text style={styles.dropTitle}>Agregar documentos</Text>
+          <Text style={styles.dropSubtitle}>Selecciona archivos PDF, DOC o DOCX</Text>
           <View style={styles.tagsRow}>
-            {['PDF', 'JPG', 'PNG', 'DOCX', 'Escaneo'].map((tag) => (
+            {['PDF', 'DOC', 'DOCX'].map((tag) => (
               <View key={tag} style={styles.tag}>
                 <Text style={styles.tagText}>{tag}</Text>
               </View>
             ))}
           </View>
           <View style={styles.addBtn}>
-            <Text style={styles.addBtnText}>+ Añadir archivo</Text>
+            <Text style={styles.addBtnText}>Seleccionar archivo</Text>
           </View>
         </Pressable>
 
@@ -103,36 +117,32 @@ export default function CargaDocumentoScreen({ route, navigation }) {
           Archivos en cola ({queue.length})
         </Text>
 
-        {queue.length === 0 && (
-          <Text style={styles.emptyQueue}>Aún no has agregado archivos.</Text>
-        )}
+        {queue.length === 0 && <Text style={styles.emptyQueue}>Aun no has agregado archivos.</Text>}
 
         {queue.map((file) => (
           <Card key={file.id}>
             <View style={globalStyles.cardRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                 <IconCircle
-                  symbol={file.name.endsWith('.jpg') ? '🖼' : '📄'}
+                  symbol={file.name.toLowerCase().endsWith('.pdf') ? 'PDF' : 'DOC'}
                   bg={colors.infoBg}
                   fg={colors.info}
                   size={36}
                 />
                 <View style={{ marginLeft: spacing.md, flex: 1 }}>
                   <Text style={styles.fileName} numberOfLines={1}>{file.name}</Text>
-                  <Text style={styles.fileMeta}>
-                    {file.size} · {file.status === 'Subido' ? 'Subido' : `Subiendo... ${file.progress}%`}
-                  </Text>
+                  <Text style={styles.fileMeta}>{formatBytes(file.size)} - {file.status}</Text>
                 </View>
               </View>
               {file.status === 'Subido' ? (
-                <Text style={styles.checkIcon}>✓</Text>
+                <Text style={styles.checkIcon}>OK</Text>
               ) : (
-                <Pressable onPress={() => removeFile(file.id)}>
-                  <Text style={styles.removeIcon}>✕</Text>
+                <Pressable onPress={() => removeFile(file.id)} disabled={saving}>
+                  <Text style={styles.removeIcon}>Quitar</Text>
                 </Pressable>
               )}
             </View>
-            {file.status !== 'Subido' && (
+            {file.status === 'Subiendo' && (
               <View style={{ marginTop: spacing.sm }}>
                 <ProgressBar progress={file.progress / 100} />
               </View>
@@ -140,48 +150,23 @@ export default function CargaDocumentoScreen({ route, navigation }) {
           </Card>
         ))}
 
-        <Card style={styles.ocrCard}>
-          <IconCircle symbol="⌗" bg={colors.purpleBg} fg={colors.purple} size={36} />
-          <View style={{ flex: 1, marginLeft: spacing.md }}>
-            <Text style={styles.ocrTitle}>Procesar con OCR automático</Text>
-            <Text style={styles.ocrSubtitle}>Extrae texto de imágenes y manuscritos</Text>
-          </View>
-          <Switch
-            value={ocrEnabled}
-            onValueChange={setOcrEnabled}
-            trackColor={{ false: colors.border, true: colors.primaryLight }}
-            thumbColor={ocrEnabled ? colors.primary : colors.textMuted}
-          />
-        </Card>
-
-        <AppButton label="Guardar en el expediente" onPress={finishUpload} style={{ marginTop: spacing.lg }} />
+        <AppButton
+          label={documento ? 'Enviar correccion' : 'Guardar en el expediente'}
+          onPress={finishUpload}
+          loading={saving}
+          disabled={queue.length === 0}
+          style={{ marginTop: spacing.lg }}
+        />
       </ScrollView>
-
-      {/* Modal - menú de origen del archivo (cámara / galería / explorador) */}
-      <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setMenuVisible(false)}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Agregar documento</Text>
-            <SourceOption icon="🖼" color={colors.success} label="Desde galería" onPress={() => addFile('galeria')} />
-            <SourceOption icon="📷" color={colors.info} label="Tomar foto / escanear" onPress={() => addFile('camara')} />
-            <SourceOption icon="📂" color={colors.purple} label="Desde archivos" onPress={() => addFile('archivos')} />
-            <Pressable style={styles.modalCancel} onPress={() => setMenuVisible(false)}>
-              <Text style={styles.modalCancelText}>Cancelar</Text>
-            </Pressable>
-          </View>
-        </Pressable>
-      </Modal>
     </SafeAreaView>
   );
 }
 
-function SourceOption({ icon, color, label, onPress }) {
-  return (
-    <Pressable style={styles.sourceOption} onPress={onPress}>
-      <IconCircle symbol={icon} bg={`${color}22`} fg={color} size={38} />
-      <Text style={styles.sourceLabel}>{label}</Text>
-    </Pressable>
-  );
+function formatBytes(bytes) {
+  if (!bytes) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 }
 
 const styles = StyleSheet.create({
@@ -204,16 +189,11 @@ const styles = StyleSheet.create({
   emptyQueue: { color: colors.textMuted, fontSize: fonts.size.sm, marginBottom: spacing.sm },
   fileName: { fontSize: fonts.size.md, fontWeight: fonts.weight.semibold, color: colors.textPrimary },
   fileMeta: { fontSize: fonts.size.xs, color: colors.textMuted, marginTop: 2 },
-  checkIcon: { color: colors.success, fontSize: 18, fontWeight: '700' },
-  removeIcon: { color: colors.danger, fontSize: 16, fontWeight: '700' },
-  ocrCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.purpleBg, borderColor: colors.purpleBg, marginTop: spacing.lg },
-  ocrTitle: { fontSize: fonts.size.sm, fontWeight: fonts.weight.bold, color: colors.textPrimary },
-  ocrSubtitle: { fontSize: fonts.size.xs, color: colors.textSecondary, marginTop: 2 },
-  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: colors.surface, borderTopLeftRadius: spacing.radius.xl, borderTopRightRadius: spacing.radius.xl, padding: spacing.xl },
-  modalTitle: { fontSize: fonts.size.lg, fontWeight: fonts.weight.bold, color: colors.textPrimary, marginBottom: spacing.md },
-  sourceOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md },
-  sourceLabel: { marginLeft: spacing.md, fontSize: fonts.size.md, fontWeight: fonts.weight.semibold, color: colors.textPrimary },
-  modalCancel: { marginTop: spacing.sm, alignItems: 'center', paddingVertical: spacing.md },
-  modalCancelText: { color: colors.danger, fontWeight: fonts.weight.bold },
+  checkIcon: { color: colors.success, fontSize: fonts.size.xs, fontWeight: '700' },
+  removeIcon: { color: colors.danger, fontSize: fonts.size.xs, fontWeight: '700' },
 });
+
+
+
+
+

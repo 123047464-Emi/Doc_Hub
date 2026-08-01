@@ -1,6 +1,6 @@
-// screens/juez/DashboardScreen.js
+﻿// screens/juez/DashboardScreen.js
 // Pantalla 3: Dashboard - Juez.
-// Consulta expedientes/documentos, aprueba o rechaza documentación y firma cuando se requiere.
+// Consulta expedientes/documentos, aprueba o rechaza documentaciÃ³n y firma cuando se requiere.
 
 import React from 'react';
 import DashboardBase from '../../components/DashboardBase';
@@ -10,14 +10,14 @@ export default function DashboardScreenJuez({ user, navigation, onLogout }) {
   const quickActions = [
     {
       label: 'Expedientes de casos activos',
-      symbol: '📁',
+      symbol: 'ðŸ“',
       bg: colors.infoBg,
       fg: colors.info,
       onPress: () => navigation.navigate('ExpedientesList'),
     },
     {
       label: 'Solicitudes de firma',
-      symbol: '✎',
+      symbol: 'âœŽ',
       bg: colors.purpleBg,
       fg: colors.purple,
       onPress: () => navigation.navigate('SolicitudesFirma'),
@@ -28,3 +28,5 @@ export default function DashboardScreenJuez({ user, navigation, onLogout }) {
     <DashboardBase user={user} navigation={navigation} onLogout={onLogout} quickActions={quickActions} />
   );
 }
+
+
