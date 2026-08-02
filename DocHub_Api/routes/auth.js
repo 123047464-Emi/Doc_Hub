@@ -92,6 +92,7 @@ router.post("/login", async (req, res, next) => {
  *       - Autenticación
  *     security:
  *       - bearerAuth: []
+ *       - apiKeyAuth: []
  *     responses:
  *       200:
  *         description: Información del usuario actual
@@ -152,6 +153,7 @@ router.get("/me", apiKey, auth, requirePermission("auth.me"), (req, res) => {
  *       - Autenticación
  *     security:
  *       - bearerAuth: []
+ *       - apiKeyAuth: []
  *     responses:
  *       200:
  *         description: Sesión cerrada correctamente
