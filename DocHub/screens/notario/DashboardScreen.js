@@ -10,21 +10,21 @@ export default function DashboardScreenNotario({ user, navigation, onLogout }) {
   const quickActions = [
     {
       label: 'Expedientes',
-      symbol: '📁',
+      symbol: 'folder-open-outline',
       bg: colors.infoBg,
       fg: colors.info,
       onPress: () => navigation.navigate('ExpedientesList'),
     },
     {
       label: 'Validar documentos',
-      symbol: '✓',
+      symbol: 'checkmark-circle-outline',
       bg: colors.successBg,
       fg: colors.success,
       onPress: () => navigation.navigate('ExpedientesList'),
     },
     {
       label: 'Firmas de certificación',
-      symbol: '✎',
+      symbol: 'create-outline',
       bg: colors.purpleBg,
       fg: colors.purple,
       onPress: () => navigation.navigate('SolicitudesFirma'),

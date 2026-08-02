@@ -12,7 +12,7 @@ import EmptyState from '../components/EmptyState';
 import AppButton from '../components/AppButton';
 import { ROLE_PERMISSIONS } from '../navigation/roleConfig';
 import { createExpediente, listExpedientes } from '../services/api';
-
+import {icons} from "@expo/vector-icons";
 const FILTERS = ['Todos', 'Activo', 'Pendiente', 'Cerrado'];
 const initialForm = { id: '', tipo: '', juzgado: '', fechaInicio: '', descripcion: '' };
 
@@ -75,7 +75,7 @@ export default function ExpedientesListScreen({ navigation, user }) {
         title="Expedientes"
         subtitle={`${expedientes.length} expedientes registrados`}
         onBack={() => navigation.goHome?.()}
-        rightIcon={permisos.puedeAdministrarExpedientes ? '+' : null}
+        rightIcon={permisos.puedeAdministrarExpedientes ? 'add' : null}
         onRightPress={() => setShowForm((value) => !value)}
       />
 

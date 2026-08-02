@@ -11,9 +11,9 @@ import AppButton from '../components/AppButton';
 import { firmarSolicitud, getDocumento, rechazarSolicitudFirma } from '../services/api';
 
 const METODOS = [
-  { key: 'trazar', label: 'Dibujar', icon: 'SIG' },
-  { key: 'archivo', label: 'Subir archivo', icon: 'IMG' },
-  { key: 'escribir', label: 'Escribir', icon: 'ABC' },
+  { key: 'trazar', label: 'Dibujar', icon: 'create-outline' },
+  { key: 'archivo', label: 'Subir archivo', icon: 'image-outline' },
+  { key: 'escribir', label: 'Escribir', icon: 'text-outline' },
 ];
 
 export default function FirmaDigitalScreen({ route, navigation }) {
@@ -168,7 +168,11 @@ export default function FirmaDigitalScreen({ route, navigation }) {
               style={[styles.metodoBtn, metodo === item.key && styles.metodoBtnActive]}
               onPress={() => setMetodo(item.key)}
             >
-              <Text style={styles.metodoIcon}>{item.icon}</Text>
+              <Ionicons
+                name={item.icon}
+                size={24}
+                color={metodo === item.key ? colors.primary : colors.textSecondary}
+              />
               <Text style={[styles.metodoLabel, metodo === item.key && styles.metodoLabelActive]}>{item.label}</Text>
             </Pressable>
           ))}
@@ -178,7 +182,7 @@ export default function FirmaDigitalScreen({ route, navigation }) {
           <View style={styles.traceBox} {...panResponder.panHandlers}>
             {points.length === 0 ? (
               <>
-                <Text style={styles.traceIcon}>SIG</Text>
+                <Ionicons name="create-outline" size={32} color={colors.textMuted} />
                 <Text style={styles.traceText}>Dibuja tu firma aqui</Text>
                 <Text style={styles.traceSubtext}>Usa mouse, dedo o lapiz tactil</Text>
               </>
@@ -195,7 +199,11 @@ export default function FirmaDigitalScreen({ route, navigation }) {
 
         {metodo === 'archivo' && (
           <Pressable style={[styles.traceBox, firmaArchivo && styles.traceBoxDone]} onPress={pickFirmaArchivo}>
-            <Text style={styles.traceIcon}>{firmaArchivo ? 'OK' : 'IMG'}</Text>
+            <Ionicons
+              name={firmaArchivo ? "checkmark-circle-outline" : "cloud-upload-outline"}
+              size={32}
+              color={firmaArchivo ? colors.success : colors.textMuted}
+            />
             <Text style={styles.traceText}>{firmaArchivo ? firmaArchivo.name : 'Subir firma como archivo'}</Text>
             <Text style={styles.traceSubtext}>PNG, JPG o PDF</Text>
           </Pressable>

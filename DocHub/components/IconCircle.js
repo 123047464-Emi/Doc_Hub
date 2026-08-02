@@ -1,18 +1,33 @@
 // components/IconCircle.js
-// Círculo con símbolo/letra dentro, usado como "icono" simulado (sin librería de iconos).
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
-export default function IconCircle({ symbol, bg, fg, size = 40 }) {
+export default function IconCircle({ symbol, bg, fg, size = 40, isIcon = false }) {
   return (
     <View
       style={[
         styles.circle,
-        { width: size, height: size, borderRadius: size / 2, backgroundColor: bg },
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: bg,
+        },
       ]}
     >
-      <Text style={[styles.symbol, { color: fg, fontSize: size * 0.42 }]}>{symbol}</Text>
+      {isIcon ? (
+        <Ionicons
+          name={symbol}
+          size={size * 0.55}
+          color={fg}
+        />
+      ) : (
+        <Text style={[styles.symbol, { color: fg, fontSize: size * 0.42 }]}>
+          {symbol}
+        </Text>
+      )}
     </View>
   );
 }

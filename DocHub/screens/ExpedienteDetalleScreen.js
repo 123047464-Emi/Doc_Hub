@@ -23,6 +23,7 @@ import {
   updateExpedienteEstado,
   updateParticipante,
 } from '../services/api';
+import { Ionicons } from "@expo/vector-icons";
 
 const emptyParticipant = { usuarioId: '', nombre: '', rol: '', categoria: '', email: '', telefono: '' };
 
@@ -311,13 +312,32 @@ export default function ExpedienteDetalleScreen({ route, navigation, user }) {
         <Card onPress={() => navigation.navigate('Documentos', { expedienteId: expediente.id })}>
           <View style={globalStyles.cardRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-              <IconCircle symbol="DOC" bg={colors.infoBg} fg={colors.info} size={36} />
+              <View 
+                style={{
+                  width:36,
+                  height:36,
+                  borderRadius:18,
+                  backgroundColor: colors.infoBg,
+                  justifyContent:'center',
+                  alignItems:'center'
+                }}
+              >
+                <Ionicons 
+                  name="document-text-outline"
+                  size={22}
+                  color={colors.info}
+                />
+            </View>
               <View style={{ marginLeft: spacing.md, flex: 1 }}>
                 <Text style={styles.participantName}>Ver documentos del expediente</Text>
                 <Text style={styles.participantRole}>{expediente.docsFirmados}/{expediente.docsTotal} autorizados</Text>
               </View>
             </View>
-            <Text style={styles.chevron}>{'>'}</Text>
+            <Ionicons 
+              name="chevron-forward-outline"
+              size={22}
+              color={colors.textMuted}
+            />
           </View>
         </Card>
 

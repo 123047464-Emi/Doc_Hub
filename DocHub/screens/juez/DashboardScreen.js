@@ -10,14 +10,14 @@ export default function DashboardScreenJuez({ user, navigation, onLogout }) {
   const quickActions = [
     {
       label: 'Expedientes de casos activos',
-      symbol: 'ðŸ“',
+      symbol: 'folder-open-outline',
       bg: colors.infoBg,
       fg: colors.info,
       onPress: () => navigation.navigate('ExpedientesList'),
     },
     {
       label: 'Solicitudes de firma',
-      symbol: 'âœŽ',
+      symbol: 'create-outline',
       bg: colors.purpleBg,
       fg: colors.purple,
       onPress: () => navigation.navigate('SolicitudesFirma'),

@@ -11,6 +11,7 @@ import IconCircle from '../components/IconCircle';
 import ProgressBar from '../components/ProgressBar';
 import AppButton from '../components/AppButton';
 import { updateDocumento, uploadDocumento } from '../services/api';
+import { Ionicons } from "@expo/vector-icons";
 
 export default function CargaDocumentoScreen({ route, navigation }) {
   const expedienteId = route?.params?.expedienteId || 'GENERAL';
@@ -98,7 +99,7 @@ export default function CargaDocumentoScreen({ route, navigation }) {
 
       <ScrollView contentContainerStyle={globalStyles.screenContent}>
         <Pressable style={styles.dropZone} onPress={pickFile}>
-          <IconCircle symbol="+" bg={colors.primaryLight} fg={colors.primary} size={48} />
+          <IconCircle symbol="add-outline" bg={colors.primaryLight} fg={colors.primary} size={48} />
           <Text style={styles.dropTitle}>Agregar documentos</Text>
           <Text style={styles.dropSubtitle}>Selecciona archivos PDF, DOC o DOCX</Text>
           <View style={styles.tagsRow}>
@@ -124,7 +125,7 @@ export default function CargaDocumentoScreen({ route, navigation }) {
             <View style={globalStyles.cardRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                 <IconCircle
-                  symbol={file.name.toLowerCase().endsWith('.pdf') ? 'PDF' : 'DOC'}
+                  symbol={file.name.toLowerCase().endsWith('.pdf') ? 'document-text-outline' : 'document-outline'}
                   bg={colors.infoBg}
                   fg={colors.info}
                   size={36}
@@ -135,7 +136,7 @@ export default function CargaDocumentoScreen({ route, navigation }) {
                 </View>
               </View>
               {file.status === 'Subido' ? (
-                <Text style={styles.checkIcon}>OK</Text>
+                <Ionicons name="checkmark-circle-outline"size={20} color={colors.success} />
               ) : (
                 <Pressable onPress={() => removeFile(file.id)} disabled={saving}>
                   <Text style={styles.removeIcon}>Quitar</Text>

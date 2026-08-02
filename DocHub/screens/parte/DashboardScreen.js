@@ -10,14 +10,14 @@ export default function DashboardScreenParte({ user, navigation, onLogout }) {
   const quickActions = [
     {
       label: 'Mi expediente',
-      symbol: 'ðŸ“',
+      symbol: 'folder-open-outline',
       bg: colors.infoBg,
       fg: colors.info,
       onPress: () => navigation.navigate('ExpedientesList'),
     },
     {
       label: 'Firmar documentos',
-      symbol: 'âœŽ',
+      symbol: 'create-outline',
       bg: colors.purpleBg,
       fg: colors.purple,
       onPress: () => navigation.navigate('SolicitudesFirma'),

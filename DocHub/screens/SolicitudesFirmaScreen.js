@@ -12,6 +12,7 @@ import EmptyState from '../components/EmptyState';
 import AppButton from '../components/AppButton';
 import { ROLE_PERMISSIONS } from '../navigation/roleConfig';
 import { createSolicitudFirma, listDocumentos, listExpedientes, listParticipantes, listSolicitudesFirma } from '../services/api';
+import { Ionicons } from "@expo/vector-icons";
 
 const TABS = ['Pendientes', 'Firmadas', 'Rechazadas'];
 
@@ -127,7 +128,7 @@ export default function SolicitudesFirmaScreen({ navigation, user }) {
         title="Solicitudes de firma"
         subtitle={permisos.soloSolicitudesFirma ? 'Documentos asignados para tu firma' : 'Documentos que requieren firma digital'}
         onBack={() => navigation.goHome?.()}
-        rightIcon={puedeSolicitarFirma ? '+' : null}
+        rightIcon={puedeSolicitarFirma ? 'add-outline' : null}
         onRightPress={() => puedeSolicitarFirma && setModalVisible(true)}
       />
 
@@ -150,7 +151,13 @@ export default function SolicitudesFirmaScreen({ navigation, user }) {
           <Card onPress={() => handleOpen(item)}>
             <View style={globalStyles.cardRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                <IconCircle symbol="SIG" bg={colors.dangerBg} fg={colors.danger} size={40} />
+                <IconCircle 
+                  symbol="create-outline" 
+                  bg={colors.dangerBg} 
+                  fg={colors.danger} 
+                  size={40}
+                  isIcon={true}
+                />
                 <View style={{ marginLeft: spacing.md, flex: 1 }}>
                   <Text style={styles.docName} numberOfLines={1}>{item.documento}</Text>
                   <Text style={styles.docMeta}>Exp. #{item.expedienteId} - {item.version}</Text>

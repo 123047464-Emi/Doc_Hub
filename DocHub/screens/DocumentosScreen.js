@@ -12,6 +12,8 @@ import EmptyState from '../components/EmptyState';
 import AppButton from '../components/AppButton';
 import { ROLE_PERMISSIONS } from '../navigation/roleConfig';
 import { listDocumentos, updateDocumentoEstado } from '../services/api';
+import { Ionicons } from "@expo/vector-icons";
+
 
 const FILTERS = [
   { key: 'Todos', label: 'Todos' },
@@ -21,9 +23,9 @@ const FILTERS = [
 ];
 
 const TIPO_ICON = {
-  pdf: { symbol: 'PDF', bg: colors.dangerBg, fg: colors.danger },
-  doc: { symbol: 'DOC', bg: colors.infoBg, fg: colors.info },
-  docx: { symbol: 'DOC', bg: colors.infoBg, fg: colors.info },
+  pdf: { symbol: 'document-text-outline', bg: colors.dangerBg, fg: colors.danger },
+  doc: { symbol: 'document-outline', bg: colors.infoBg, fg: colors.info },
+  docx: { symbol: 'document-outline', bg: colors.infoBg, fg: colors.info },
 };
 
 export default function DocumentosScreen({ route, navigation, user }) {
@@ -106,7 +108,7 @@ export default function DocumentosScreen({ route, navigation, user }) {
         title="Documentos"
         subtitle={`Exp. #${expedienteId} - ${documentos.length} archivos`}
         onBack={() => navigation.goBack()}
-        rightIcon={permisos.puedeCargarDocumentos ? '+' : null}
+        rightIcon={permisos.puedeCargarDocumentos ? 'add-outline' : null}
         onRightPress={() => navigation.navigate('CargaDocumento', { expedienteId, onUploaded: loadDocumentos })}
       />
 
@@ -137,7 +139,7 @@ export default function DocumentosScreen({ route, navigation, user }) {
         contentContainerStyle={globalStyles.screenContent}
         ListEmptyComponent={
           <EmptyState
-            icon="DOC"
+            icon="document-outline"
             title={loading ? 'Cargando documentos' : 'Sin documentos'}
             message={loading ? 'Consultando la API...' : 'No hay documentos con este filtro.'}
           />

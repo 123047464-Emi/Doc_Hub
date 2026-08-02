@@ -10,10 +10,10 @@ import EmptyState from '../components/EmptyState';
 import { getDocumento, getExpediente, listNotificaciones, markNotificacionLeida } from '../services/api';
 
 const TIPO_ICON = {
-  firma: { symbol: 'SIG', bg: colors.purpleBg, fg: colors.purple },
-  documento: { symbol: 'DOC', bg: colors.infoBg, fg: colors.info },
-  recordatorio: { symbol: '!', bg: colors.warningBg, fg: colors.warning },
-  comentario: { symbol: 'MSG', bg: colors.successBg, fg: colors.success },
+  firma: { symbol: 'create-outline', bg: colors.purpleBg, fg: colors.purple },
+  documento: { symbol: 'document-text-outline', bg: colors.infoBg, fg: colors.info },
+  recordatorio: { symbol: 'alert-circle-outline', bg: colors.warningBg, fg: colors.warning },
+  comentario: { symbol: 'chatbubble-outline', bg: colors.successBg, fg: colors.success },
 };
 
 function buildSections(items) {
@@ -95,7 +95,7 @@ export default function NotificacionesScreen({ navigation }) {
           const iconInfo = TIPO_ICON[item.tipo] || TIPO_ICON.documento;
           return (
             <Pressable style={[styles.notifCard, !item.leida && styles.notifCardUnread]} onPress={() => openNotification(item)}>
-              <IconCircle symbol={iconInfo.symbol} bg={iconInfo.bg} fg={iconInfo.fg} size={38} />
+              <IconCircle symbol={iconInfo.symbol} bg={iconInfo.bg}  fg={iconInfo.fg} size={38} isIcon={true}/>
               <View style={{ flex: 1, marginLeft: spacing.md }}>
                 <View style={globalStyles.cardRow}>
                   <Text style={styles.notifTitle}>{item.titulo || item.tipo}</Text>

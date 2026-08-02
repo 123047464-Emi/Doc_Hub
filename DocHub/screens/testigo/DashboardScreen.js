@@ -10,7 +10,7 @@ export default function DashboardScreenTestigo({ user, navigation, onLogout }) {
   const quickActions = [
     {
       label: 'Solicitudes de firma asignadas',
-      symbol: '✎',
+      symbol: 'create-outline',
       bg: colors.purpleBg,
       fg: colors.purple,
       onPress: () => navigation.navigate('SolicitudesFirma'),

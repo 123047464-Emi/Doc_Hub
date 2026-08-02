@@ -1,4 +1,4 @@
-﻿const DEFAULT_API_HOST = '10.120.166.147';
+﻿const DEFAULT_API_HOST = '192.168.1.20';
 const DEFAULT_API_PORT = '3000';
 const DEFAULT_API_PROTOCOL = 'http';
 

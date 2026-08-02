@@ -147,7 +147,7 @@ export default function VisorDocumentoScreen({ route, navigation, user }) {
         title={documento.nombre}
         subtitle={`${documento.version} - ${documento.tamanoTexto}`}
         onBack={() => navigation.goBack()}
-        rightIcon="Abrir"
+        rightIcon="open-outline"
         onRightPress={openDocumento}
       />
 

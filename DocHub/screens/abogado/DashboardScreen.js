@@ -10,21 +10,21 @@ export default function DashboardScreenAbogado({ user, navigation, onLogout }) {
   const quickActions = [
     {
       label: 'Mis expedientes',
-      symbol: '📁',
+      symbol: 'folder-outline',
       bg: colors.infoBg,
       fg: colors.info,
       onPress: () => navigation.navigate('ExpedientesList'),
     },
     {
       label: 'Solicitar firma',
-      symbol: '+',
+      symbol: 'add-circle-outline',
       bg: colors.warningBg,
       fg: colors.warning,
       onPress: () => navigation.navigate('SolicitudesFirma'),
     },
     {
       label: 'Firmar documentos',
-      symbol: '✎',
+      symbol: 'create-outline',
       bg: colors.purpleBg,
       fg: colors.purple,
       onPress: () => navigation.navigate('SolicitudesFirma'),

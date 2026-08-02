@@ -84,7 +84,7 @@ export default function PerfilScreen({ user, navigation, onLogout, onUserUpdate 
         title="Mi perfil"
         subtitle="Informacion de la cuenta"
         onBack={() => navigation.goBack()}
-        rightIcon={editando ? 'Cancelar' : 'Editar'}
+        rightIcon={editando ? 'close-outline' : 'pencil-outline'}
         onRightPress={() => setEditando((v) => !v)}
       />
       <ScrollView contentContainerStyle={globalStyles.screenContent}>
