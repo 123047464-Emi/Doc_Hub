@@ -1,10 +1,9 @@
 // src/views/UsersView.jsx
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { USERS } from '../data/mockData';
 import { getInitialsAvatar } from '../utils/avatarUtils';
 import { createProfileApi } from '../services/apiService';
-import { UserPlus, Search, Edit, Trash2 } from 'lucide-react';
+import { UserPlus, Search, Edit, Trash2, Key, UserCheck } from 'lucide-react';
 
 export default function UsersView() {
   const { usersList, addUser, updateUser, deleteUser, showToast } = useApp();
@@ -13,12 +12,15 @@ export default function UsersView() {
   const [editingUser, setEditingUser] = useState(null);
 
   const [newUserName, setNewUserName] = useState('');
+  const [newUserUsername, setNewUserUsername] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('1234');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserRole, setNewUserRole] = useState('Juez');
   const [newUserCargo, setNewUserCargo] = useState('');
 
   const filteredUsers = usersList.filter(u =>
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (u.username && u.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
     u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.cargo.toLowerCase().includes(searchTerm.toLowerCase())
@@ -27,6 +29,10 @@ export default function UsersView() {
   const handleAddUser = async (e) => {
     e.preventDefault();
     if (!newUserName.trim() || !newUserEmail.trim()) return;
+
+    // Generate clean username if not provided
+    const finalUsername = (newUserUsername.trim() || newUserName.toLowerCase().replace(/^(lic\.|not\.|dra\.|dr\.|ing\.|mtro\.)\s+/i, '').trim().replace(/\s+/g, '')).toLowerCase();
+    const finalPassword = newUserPassword.trim() || '1234';
 
     let defaultCargo = `${newUserRole} del Sistema`;
     if (newUserRole === 'Juez') defaultCargo = 'Juez 3° Familiar';
@@ -41,7 +47,8 @@ export default function UsersView() {
 
     const newUser = {
       id: `u-${Date.now()}`,
-      username: newUserName.toLowerCase().replace(/^(lic\.|not\.|dra\.|dr\.|ing\.|mtro\.)\s+/i, '').trim().replace(/\s+/g, ''),
+      username: finalUsername,
+      password: finalPassword,
       name: newUserName,
       email: newUserEmail,
       role: newUserRole,
@@ -53,15 +60,21 @@ export default function UsersView() {
       accesoMobile: true
     };
 
-    await createProfileApi(newUser);
-    addUser(newUser);
+    try {
+      await createProfileApi(newUser);
+      addUser(newUser);
 
-    showToast(`Usuario "${newUserName}" agregado exitosamente con el rol "${newUserRole}" (Sincronizado App Móvil)`, 'success');
-    setIsModalOpen(false);
-    setNewUserName('');
-    setNewUserEmail('');
-    setNewUserRole('Abogado');
-    setNewUserCargo('');
+      showToast(`Usuario "@${finalUsername}" (${newUserName}) creado exitosamente en base de datos para Móvil y Web`, 'success');
+      setIsModalOpen(false);
+      setNewUserName('');
+      setNewUserUsername('');
+      setNewUserPassword('1234');
+      setNewUserEmail('');
+      setNewUserRole('Juez');
+      setNewUserCargo('');
+    } catch (err) {
+      showToast(`Error al crear usuario en la API: ${err.message}`, 'warning');
+    }
   };
 
   const handleSaveEditUser = (e) => {
@@ -86,7 +99,7 @@ export default function UsersView() {
         <div>
           <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Gestión de Perfiles y Usuarios</h2>
           <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-            Consola del Administrador · Asignación y edición de roles para la plataforma Web y App Móvil
+            Consola del Administrador · Asignación de credenciales (Usuario / Contraseña) para App Móvil y Plataforma Web
           </p>
         </div>
         <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
@@ -96,12 +109,12 @@ export default function UsersView() {
 
       {/* Search */}
       <div className="card-glass" style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ position: 'relative', width: '320px' }}>
+        <div style={{ position: 'relative', width: '360px' }}>
           <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text"
             className="input-field"
-            placeholder="Buscar por nombre, correo, cédula o rol..."
+            placeholder="Buscar por usuario, nombre, correo o rol..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{ paddingLeft: '36px', fontSize: '0.85rem' }}
@@ -115,12 +128,12 @@ export default function UsersView() {
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-app)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.72rem', letterSpacing: '0.05em' }}>
-              <th style={{ padding: '14px 20px' }}>Fotografía & Usuario</th>
+              <th style={{ padding: '14px 20px' }}>Fotografía & Nombre</th>
+              <th style={{ padding: '14px 20px' }}>Usuario Móvil / Web</th>
               <th style={{ padding: '14px 20px' }}>Correo Electrónico</th>
               <th style={{ padding: '14px 20px' }}>Rol Asignado</th>
               <th style={{ padding: '14px 20px' }}>Acceso Plataforma</th>
               <th style={{ padding: '14px 20px' }}>Estado</th>
-              <th style={{ padding: '14px 20px' }}>Último Acceso</th>
               <th style={{ padding: '14px 20px', textAlign: 'right' }}>Acciones</th>
             </tr>
           </thead>
@@ -138,6 +151,11 @@ export default function UsersView() {
                       </div>
                     </div>
                   </td>
+                  <td style={{ padding: '14px 20px' }}>
+                    <span style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: 'monospace', backgroundColor: 'var(--bg-app)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                      @{u.username || 'usuario'}
+                    </span>
+                  </td>
                   <td style={{ padding: '14px 20px', color: 'var(--text-secondary)' }}>{u.email}</td>
                   <td style={{ padding: '14px 20px' }}><span className="badge badge-purple">{u.role}</span></td>
                   <td style={{ padding: '14px 20px' }}>
@@ -148,11 +166,10 @@ export default function UsersView() {
                   <td style={{ padding: '14px 20px' }}>
                     <span className={`badge ${u.status === 'Activo' ? 'badge-success' : 'badge-danger'}`}>{u.status}</span>
                   </td>
-                  <td style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>{u.lastAccess}</td>
                   <td style={{ padding: '14px 20px', textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                       <button className="btn btn-outline" style={{ padding: '4px 8px', fontSize: '0.75rem' }} onClick={() => setEditingUser(u)}>
-                        <Edit size={14} /> Editar Rol
+                        <Edit size={14} /> Editar
                       </button>
                       <button className="btn btn-outline" style={{ padding: '4px 8px', fontSize: '0.75rem', color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => deleteUser(u.id)}>
                         <Trash2 size={14} /> Eliminar
@@ -169,17 +186,53 @@ export default function UsersView() {
       {/* New User Modal */}
       {isModalOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
-          <div className="card-glass" style={{ width: '460px', padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '16px' }}>Agregar Nuevo Usuario</h3>
+          <div className="card-glass" style={{ width: '480px', padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '4px', fontWeight: 800 }}>Agregar Nuevo Usuario</h3>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+              Define el nombre de usuario y contraseña para iniciar sesión en la App Móvil y Plataforma Web.
+            </p>
+
             <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
                 <label className="input-label">Nombre Completo</label>
                 <input type="text" className="input-field" placeholder="Ej. Lic. Roberto Gómez" value={newUserName} onChange={e => setNewUserName(e.target.value)} required />
               </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <UserCheck size={13} color="var(--accent)" /> Usuario (`username`)
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="Ej. rgomez"
+                    value={newUserUsername}
+                    onChange={e => setNewUserUsername(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Key size={13} color="var(--accent)" /> Contraseña
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="1234"
+                    value={newUserPassword}
+                    onChange={e => setNewUserPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="input-label">Correo Electrónico</label>
                 <input type="email" className="input-field" placeholder="usuario@ejemplo.com" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} required />
               </div>
+
               <div>
                 <label className="input-label">Rol del Usuario</label>
                 <select className="input-field" value={newUserRole} onChange={e => setNewUserRole(e.target.value)}>
@@ -191,6 +244,7 @@ export default function UsersView() {
                   <option value="Administrador">Administrador (Web + Móvil)</option>
                 </select>
               </div>
+
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button>
                 <button type="submit" className="btn btn-primary">Agregar Usuario</button>
@@ -204,9 +258,9 @@ export default function UsersView() {
       {editingUser && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
           <div className="card-glass" style={{ width: '480px', padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '4px', fontWeight: 800 }}>Editar Usuario y Rol Asignado</h3>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '4px', fontWeight: 800 }}>Editar Usuario</h3>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-              Cambio exclusivo por el Administrador para la Plataforma Web y App Móvil
+              Modificación de perfil y rol administrativo para la Plataforma Web y App Móvil
             </p>
 
             <form onSubmit={handleSaveEditUser} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -218,6 +272,17 @@ export default function UsersView() {
                   value={editingUser.name}
                   onChange={e => setEditingUser({ ...editingUser, name: e.target.value })}
                   required
+                />
+              </div>
+
+              <div>
+                <label className="input-label">Usuario (`username` - No modificable)</label>
+                <input
+                  type="text"
+                  className="input-field"
+                  value={editingUser.username || ''}
+                  disabled
+                  style={{ cursor: 'not-allowed', backgroundColor: 'var(--bg-app)', color: 'var(--accent)', fontWeight: 'bold' }}
                 />
               </div>
 
@@ -282,4 +347,3 @@ export default function UsersView() {
     </div>
   );
 }
-

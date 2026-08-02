@@ -83,6 +83,66 @@ export function AppProvider({ children }) {
     }
   }, [documents]);
 
+  // Fetch live documents and users from DocHub_Api on mount
+  useEffect(() => {
+    async function loadApiData() {
+      try {
+        const { fetchDocuments, fetchUsuariosApi } = await import('../services/apiService');
+        const [apiDocs, apiUsers] = await Promise.all([
+          fetchDocuments().catch(() => null),
+          fetchUsuariosApi().catch(() => null)
+        ]);
+
+        if (Array.isArray(apiDocs) && apiDocs.length > 0) {
+          const mappedDocs = apiDocs.map(d => ({
+            id: String(d.id || d.ID || `DOC-${d.id}`),
+            expediente: d.expedienteId || d.expediente_id || 'GENERAL',
+            nombre: d.nombre,
+            autor: d.creadoPor ? `Usuario #${d.creadoPor}` : 'Lic. Fernando Reyes',
+            categoria: d.extension ? d.extension.toUpperCase().replace('.', '') : 'Documento',
+            fecha: d.creadoEn ? d.creadoEn.split('T')[0] : '2026-07-20',
+            estado: d.estado || 'Subido',
+            workflowStage: d.estado || 'Procesado',
+            version: d.version || 'v1.0',
+            tamano: d.tamanoTexto || `${Math.round((d.tamano || 1024) / 1024)} KB`,
+            favorito: false,
+            sensible: false,
+            firmantes: [],
+            descripcion: d.nombreArchivo ? `Archivo: ${d.nombreArchivo}` : d.nombre
+          }));
+          setDocuments(prev => {
+            const existingIds = new Set(mappedDocs.map(md => md.id));
+            return [...mappedDocs, ...prev.filter(p => !existingIds.has(p.id))];
+          });
+        }
+
+        if (Array.isArray(apiUsers) && apiUsers.length > 0) {
+          const { getInitialsAvatar } = await import('../utils/avatarUtils');
+          const mappedUsers = apiUsers.map(u => ({
+            id: String(u.id),
+            username: u.username,
+            name: u.nombre || u.username,
+            email: `${u.username}@dochub.upq.edu.mx`,
+            role: u.categoria || 'Abogado',
+            cargo: u.cargo || u.categoria,
+            avatar: getInitialsAvatar(u.nombre || u.username),
+            status: 'Activo',
+            lastAccess: 'En línea',
+            accesoWeb: u.categoria === 'Administrador' || u.categoria === 'Juez',
+            accesoMobile: true
+          }));
+          setUsersList(prev => {
+            const existingUsernames = new Set(mappedUsers.map(mu => mu.username.toLowerCase()));
+            return [...mappedUsers, ...prev.filter(p => !existingUsernames.has(p.username.toLowerCase()))];
+          });
+        }
+      } catch (err) {
+        console.warn('Could not sync with DocHub_Api:', err);
+      }
+    }
+    loadApiData();
+  }, []);
+
   const [selectedDoc, setSelectedDoc] = useState(null); // For PDF Viewer modal
   const [compareDocs, setCompareDocs] = useState(null); // For version comparison modal
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -167,9 +227,18 @@ export function AppProvider({ children }) {
     }));
   };
 
-  const deleteUser = (id) => {
+  const deleteUser = async (id) => {
     const userToDelete = usersList.find(u => u.id === id);
     setUsersList(prev => prev.filter(u => u.id !== id));
+
+    try {
+      const { deleteProfileApi } = await import('../services/apiService');
+      const targetIdentifier = userToDelete?.username || userToDelete?.id || id;
+      await deleteProfileApi(targetIdentifier);
+    } catch (e) {
+      console.warn('Could not sync user deletion to DocHub_Api:', e);
+    }
+
     showToast(`Usuario "${userToDelete?.name || id}" eliminado correctamente`, 'warning');
   };
 
@@ -189,9 +258,21 @@ export function AppProvider({ children }) {
     setAuditLogs(prev => [logoutLog, ...prev]);
   };
 
-  const addDocument = (newDoc) => {
+  const addDocument = async (newDoc) => {
     setDocuments(prev => [newDoc, ...prev]);
     showToast(`Expediente "${newDoc.nombre}" radicado exitosamente`, 'success');
+
+    try {
+      const { createDocumentApi } = await import('../services/apiService');
+      await createDocumentApi({
+        nombre: newDoc.nombre,
+        expedienteId: newDoc.expediente || 'GENERAL',
+        estado: newDoc.estado || 'Subido',
+        version: newDoc.version || 'v1.0'
+      });
+    } catch (e) {
+      console.warn('Could not persist document to DocHub_Api:', e);
+    }
     
     const newLog = {
       id: `log-${Date.now()}`,
@@ -249,9 +330,16 @@ export function AppProvider({ children }) {
     setDocuments(prev => prev.map(d => d.id === docId ? { ...d, favorito: !d.favorito } : d));
   };
 
-  const deleteDocument = (docId) => {
+  const deleteDocument = async (docId) => {
     const doc = documents.find(d => d.id === docId);
     setDocuments(prev => prev.filter(d => d.id !== docId));
+
+    try {
+      const { deleteDocumentApi } = await import('../services/apiService');
+      await deleteDocumentApi(docId, 'Eliminado desde la plataforma web');
+    } catch (e) {
+      console.warn('Could not sync document deletion to DocHub_Api:', e);
+    }
 
     const deleteLog = {
       id: `log-${Date.now()}`,
@@ -272,8 +360,17 @@ export function AppProvider({ children }) {
     showToast('Notificaciones marcadas como leídas', 'info');
   };
 
-  const updateUser = (updatedUser) => {
+  const updateUser = async (updatedUser) => {
     setUsersList(prev => prev.map(u => u.id === updatedUser.id ? { ...u, ...updatedUser } : u));
+
+    try {
+      const { updateUserProfileApi } = await import('../services/apiService');
+      const targetIdentifier = updatedUser.username || updatedUser.id;
+      await updateUserProfileApi(targetIdentifier, updatedUser);
+    } catch (e) {
+      console.warn('Could not sync user update to DocHub_Api:', e);
+    }
+
     showToast(`Usuario "${updatedUser.name}" actualizado correctamente (Rol: ${updatedUser.role})`, 'success');
   };
 

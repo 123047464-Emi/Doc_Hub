@@ -92,7 +92,6 @@ router.post("/login", async (req, res, next) => {
  *       - Autenticación
  *     security:
  *       - bearerAuth: []
- *       - apiKeyAuth: []
  *     responses:
  *       200:
  *         description: Información del usuario actual
@@ -153,7 +152,6 @@ router.get("/me", apiKey, auth, requirePermission("auth.me"), (req, res) => {
  *       - Autenticación
  *     security:
  *       - bearerAuth: []
- *       - apiKeyAuth: []
  *     responses:
  *       200:
  *         description: Sesión cerrada correctamente
@@ -183,17 +181,22 @@ router.post("/logout", apiKey, auth, requirePermission("auth.logout"), async (re
   }
 });
 
-router.get("/demo-users", (_req, res) => {
-  res.json(
-    demoUsers.map((user) => ({
-      username: user.username,
-      password: user.password,
-      categoria: user.categoria,
-      nombre: user.nombre,
-      cargo: user.cargo,
-      permisos: getRolePermissions(user.categoria),
-    }))
-  );
+router.get("/demo-users", async (_req, res, next) => {
+  try {
+    const users = await db.all("SELECT id, username, categoria, nombre, cargo FROM usuarios ORDER BY id ASC");
+    res.json(
+      users.map((user) => ({
+        username: user.username,
+        password: "1234",
+        categoria: user.categoria,
+        nombre: user.nombre || user.username,
+        cargo: user.cargo || user.categoria,
+        permisos: getRolePermissions(user.categoria),
+      }))
+    );
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;

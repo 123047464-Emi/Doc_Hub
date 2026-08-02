@@ -31,16 +31,15 @@ async function initSqlite() {
   await ensureSqliteColumn("usuarios", "nombre", "nombre TEXT NOT NULL DEFAULT ''");
   await ensureSqliteColumn("usuarios", "cargo", "cargo TEXT NOT NULL DEFAULT ''");
 
-  for (const user of buildSeedUsers(seedUser, seedPassword)) {
-    await sqliteRun(
-      `INSERT OR IGNORE INTO usuarios (username, password_hash, categoria, nombre, cargo)
-       VALUES (?, ?, ?, ?, ?)`,
-      [user.username, user.passwordHash, user.categoria, user.nombre, user.cargo]
-    );
-    await sqliteRun(
-      "UPDATE usuarios SET categoria = ?, nombre = ?, cargo = ? WHERE username = ?",
-      [user.categoria, user.nombre, user.cargo, user.username]
-    );
+  const userCount = await sqliteGet("SELECT COUNT(*) as count FROM usuarios");
+  if (!userCount || userCount.count === 0) {
+    for (const user of buildSeedUsers(seedUser, seedPassword)) {
+      await sqliteRun(
+        `INSERT OR IGNORE INTO usuarios (username, password_hash, categoria, nombre, cargo)
+         VALUES (?, ?, ?, ?, ?)`,
+        [user.username, user.passwordHash, user.categoria, user.nombre, user.cargo]
+      );
+    }
   }
 
   await backfillSqliteDocumentVersions();
