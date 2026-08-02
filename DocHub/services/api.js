@@ -1,4 +1,4 @@
-﻿import { API_BASE_URL, API_KEY } from '../config/apiConfig';
+import { API_BASE_URL, API_KEY } from '../config/apiConfig';
 
 let sessionToken = null;
 
@@ -36,6 +36,12 @@ export function getDocumentoOpenUrl(documento) {
   return `${url}${separator}token=${encodeURIComponent(sessionToken)}&apiKey=${encodeURIComponent(API_KEY)}&v=${encodeURIComponent(cacheKey)}`;
 }
 
+let onUnauthorizedHandler = null;
+
+export function setOnUnauthorized(handler) {
+  onUnauthorizedHandler = handler;
+}
+
 async function request(path, options = {}) {
   const headers = {
     'x-api-key': API_KEY,
@@ -50,6 +56,13 @@ async function request(path, options = {}) {
 
   const contentType = response.headers.get('content-type') || '';
   const payload = contentType.includes('application/json') ? await response.json() : await response.text();
+
+  if (response.status === 401 && sessionToken && path !== '/auth/login') {
+    clearSessionToken();
+    if (onUnauthorizedHandler) {
+      onUnauthorizedHandler();
+    }
+  }
 
   if (!response.ok) {
     throw new Error(payload?.message || `Error HTTP ${response.status}`);

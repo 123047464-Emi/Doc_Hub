@@ -164,6 +164,72 @@ router.post("/", apiKey, auth, requirePermission("usuarios.crear"), async (req, 
   }
 });
 
+router.delete("/:id", apiKey, auth, requirePermission("usuarios.crear"), async (req, res, next) => {
+  try {
+    const target = String(req.params.id);
+    const existing = await db.get(
+      "SELECT id, username FROM usuarios WHERE id = ? OR username = ?",
+      [target, target]
+    );
+
+    if (!existing) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    await db.run("DELETE FROM usuarios WHERE id = ?", [existing.id]);
+
+    await registrarTrazabilidad(req, {
+      accion: "eliminar_usuario",
+      entidadTipo: "usuario",
+      entidadId: existing.id,
+      metadata: { username: existing.username },
+    });
+
+    res.json({ message: "Usuario eliminado correctamente", id: existing.id });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put("/:id", apiKey, auth, requirePermission("usuarios.crear"), async (req, res, next) => {
+  try {
+    const target = String(req.params.id);
+    const existing = await db.get(
+      "SELECT id, username, categoria, nombre, cargo FROM usuarios WHERE id = ? OR username = ?",
+      [target, target]
+    );
+
+    if (!existing) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    const nombre = req.body.nombre || req.body.name || existing.nombre;
+    const categoria = req.body.categoria || req.body.role || existing.categoria;
+    const cargo = req.body.cargo || existing.cargo;
+
+    await db.run(
+      "UPDATE usuarios SET nombre = ?, categoria = ?, cargo = ? WHERE id = ?",
+      [nombre, categoria, cargo, existing.id]
+    );
+
+    const actualizado = await db.get(
+      "SELECT id, username, categoria, nombre, cargo FROM usuarios WHERE id = ?",
+      [existing.id]
+    );
+
+    await registrarTrazabilidad(req, {
+      accion: "editar_usuario",
+      entidadTipo: "usuario",
+      entidadId: existing.id,
+      metadata: { username: existing.username, anterior: existing, nuevo: actualizado },
+    });
+
+    res.json(mapUsuario(actualizado));
+  } catch (err) {
+    next(err);
+  }
+});
+
 /**
  * @swagger
  * /usuarios/me:

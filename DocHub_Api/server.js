@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 const swaggerUi = require("swagger-ui-express");
@@ -26,11 +26,6 @@ const swaggerSpec = swaggerJsdoc({
           type: "http",
           scheme: "bearer",
           bearerFormat: "JWT"
-        },
-        apiKeyAuth: {
-          type: "apiKey",
-          in: "header",
-          name: "x-api-key"
         }
       }
     }

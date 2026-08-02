@@ -2,12 +2,9 @@
 import express from 'express';
 import cors from 'cors';
 import crypto from 'crypto';
-import bcrypt from 'bcryptjs';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-//definir rondas del salt
-const SALT_ROUNDS = 10;
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -127,9 +124,9 @@ let auditLogs = [
 ];
 
 let sharedProfiles = [
-  { id: 'u1', username: 'admin', passwordHash: bcrypt.hashSync('1234', SALT_ROUNDS), role: 'Administrador', name: 'Lic. Administrador General', email: 'admin@poderjudicial.gob.mx', cargo: 'Administrador del Sistema', status: 'Activo', cedula: 'CED-1000001', appMobileConnected: true },
-  { id: 'u2', username: 'juez1', passwordHash: bcrypt.hashSync('1234', SALT_ROUNDS), role: 'Juez', name: 'Lic. Fernando Reyes', email: 'fernando.reyes@poderjudicial.gob.mx', cargo: 'Juez 3° Familiar', status: 'Activo', cedula: 'CED-8842109', appMobileConnected: true },
-  { id: 'u3', username: 'juez2', passwordHash: bcrypt.hashSync('1234', SALT_ROUNDS), role: 'Juez', name: 'Dra. María Elena Garza', email: 'maria.garza@poderjudicial.gob.mx', cargo: 'Juez 1° Civil', status: 'Activo', cedula: 'CED-9940182', appMobileConnected: true }
+  { id: 'u1', username: 'admin', password: '1234', role: 'Administrador', name: 'Lic. Administrador General', email: 'admin@poderjudicial.gob.mx', cargo: 'Administrador del Sistema', status: 'Activo', cedula: 'CED-1000001', appMobileConnected: true },
+  { id: 'u2', username: 'juez1', password: '1234', role: 'Juez', name: 'Lic. Fernando Reyes', email: 'fernando.reyes@poderjudicial.gob.mx', cargo: 'Juez 3° Familiar', status: 'Activo', cedula: 'CED-8842109', appMobileConnected: true },
+  { id: 'u3', username: 'juez2', password: '1234', role: 'Juez', name: 'Dra. María Elena Garza', email: 'maria.garza@poderjudicial.gob.mx', cargo: 'Juez 1° Civil', status: 'Activo', cedula: 'CED-9940182', appMobileConnected: true }
 ];
 
 let users = [...sharedProfiles];
@@ -357,10 +354,8 @@ app.get('/api/audit-logs', (req, res) => {
 });
 
 // 9. GET /api/users - Users list
-
 app.get('/api/users', (req, res) => {
-  const safeUsers = users.map(({ passwordHash, ...rest }) => rest);
-  res.json({ success: true, count: safeUsers.length, data: safeUsers });
+  res.json({ success: true, count: users.length, data: users });
 });
 
 // 10. GET /api/stats - Executive metrics dashboard endpoint
@@ -411,11 +406,11 @@ app.post('/api/profiles', (req, res) => {
   }
 
   const generatedUsername = username || name.toLowerCase().replace(/^(lic\.|not\.|dra\.|dr\.|ing\.|mtro\.)\s+/i, '').trim().replace(/\s+/g, '');
-
+  
   const newProfile = {
     id: `u-${Date.now()}`,
     username: generatedUsername,
-    passwordHash: bcrypt.hashSync(password || '1234', SALT_ROUNDS),   // Hasheo
+    password: password || '1234',
     role: role || 'Revisor',
     name,
     email,
@@ -438,12 +433,10 @@ app.post('/api/profiles', (req, res) => {
     resultado: 'Exitoso'
   });
 
-    const { passwordHash, ...safeProfile } = newProfile;   //separa passwordHash del resto
-
   res.status(201).json({
     success: true,
     message: `Perfil unificado "${name}" creado exitosamente y sincronizado con la App Móvil`,
-    profile: safeProfile   //manda safeProfile (sin passwordHash)
+    profile: newProfile
   });
 });
 
@@ -454,9 +447,7 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(400).json({ success: false, message: 'Usuario y contraseña requeridos.' });
   }
 
-  const candidate = sharedProfiles.find(p => p.username.toLowerCase() === username.toLowerCase());
-  const found = candidate && bcrypt.compareSync(password, candidate.passwordHash) ? candidate : null;
-
+  const found = sharedProfiles.find(p => p.username.toLowerCase() === username.toLowerCase() && p.password === password);
   if (found) {
     if (found.role !== 'Administrador' && found.role !== 'Juez') {
       return res.status(403).json({ success: false, message: 'Acceso denegado. Solo Administradores y Jueces pueden ingresar.' });
