@@ -5,7 +5,9 @@ const swaggerUi = require("swagger-ui-express");
 const swaggerJsdoc = require("swagger-jsdoc");
 
 require("dotenv").config();
-
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 
@@ -66,3 +68,19 @@ app.listen(process.env.PORT, "0.0.0.0", () => {
   console.log("API corriendo en puerto " + process.env.PORT);
 });
 
+const HTTPS_PORT = process.env.HTTPS_PORT || 3443;
+const certPath = path.join(__dirname, 'certs', 'server.crt');
+const keyPath = path.join(__dirname, 'certs', 'server.key');
+
+if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+  const httpsOptions = {
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath)
+  };
+
+  https.createServer(httpsOptions, app).listen(HTTPS_PORT, () => {
+    console.log("API HTTPS corriendo en puerto " + HTTPS_PORT);
+  });
+} else {
+  console.warn('[SSL] No se encontraron certificados en /certs. HTTPS no se inició.');
+}

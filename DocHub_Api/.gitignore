@@ -5,3 +5,5 @@ uploads/
 tmp/
 output/
 *.log
+
+certs/
