@@ -1,0 +1,11 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus-DocHub
+    type: prometheus
+    access: proxy
+    # Reemplaza host.docker.internal por la IP del servidor privado
+    # donde corre el contenedor de prometheus (puerto 9090 publicado).
+    url: http://host.docker.internal:9090
+    isDefault: true
+    editable: true

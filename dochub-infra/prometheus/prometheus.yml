@@ -1,0 +1,44 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - prometheus:9090
+
+  # Metricas de sistema del servidor privado (CPU, RAM, disco, red)
+  - job_name: node
+    static_configs:
+      - targets:
+          - node_exporter:9100
+
+  # Metricas de cada contenedor Docker
+  - job_name: cadvisor
+    static_configs:
+      - targets:
+          - cadvisor:8080
+
+  # Las 2 replicas de DocHub_Api
+  # Requiere que server.js exponga /metrics (ver nota mas abajo)
+  - job_name: dochub-api
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - api1:3000
+          - api2:3000
+        labels:
+          proyecto: dochub
+
+  # Nota: DocHub_Web ahora se sirve como archivos estaticos con Nginx
+  # (no tiene /metrics de aplicacion). Su uso de CPU/RAM ya se ve via
+  # el job "cadvisor" de arriba (contenedores dochub_web1 / dochub_web2).
+
+  # HAProxy vive en el servidor PUBLICO. Reemplaza host.docker.internal
+  # por la IP real (o hostname) del servidor donde corre haproxy.
+  - job_name: haproxy-edge
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - host.docker.internal:8405

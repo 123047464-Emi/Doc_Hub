@@ -1,0 +1,118 @@
+
+# ============================================================
+# SERVIDOR PRIVADO - DocHub
+# Corre en la maquina/VM que SOLO es visible dentro de la red interna
+# (el servidor publico/HAProxy es el unico que le habla).
+# Servicios: 2 replicas de DocHub_Api + 2 replicas de DocHub_Web +
+# Prometheus + exporters.
+#
+# NOTA: la Base de Datos la puede tener ya el compañero encargado de la API
+# en su propio docker-compose.yml (dentro de DocHub_Api). Este archivo
+# está pensado para pararse A LADO de ese compose, no para reemplazarlo.
+# Si tu equipo quiere todo en un solo archivo, copia el servicio "db"
+# que ya tengan y agrégalo a la red "data_network" de aquí abajo.
+# ============================================================
+services:
+  web1:
+    build:
+      context: ../DocHub_Web
+      dockerfile: Dockerfile
+    container_name: dochub_web1
+    restart: unless-stopped
+    ports:
+      - "5001:80"
+    networks:
+      - app_network
+
+  web2:
+    build:
+      context: ../DocHub_Web
+      dockerfile: Dockerfile
+    container_name: dochub_web2
+    restart: unless-stopped
+    ports:
+      - "5002:80"
+    networks:
+      - app_network
+
+  api1:
+    build:
+      context: ../DocHub_Api
+      dockerfile: Dockerfile
+    container_name: dochub_api1
+    restart: unless-stopped
+    env_file:
+      - ../DocHub_Api/.env
+    ports:
+      - "3001:3000"   # ajusta 3000 si tu server.js escucha en otro puerto
+    networks:
+      - app_network
+      - data_network
+
+  api2:
+    build:
+      context: ../DocHub_Api
+      dockerfile: Dockerfile
+    container_name: dochub_api2
+    restart: unless-stopped
+    env_file:
+      - ../DocHub_Api/.env
+    ports:
+      - "3002:3000"
+    networks:
+      - app_network
+      - data_network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: dochub_prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - app_network
+      - monitoring_network
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: dochub_cadvisor
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    networks:
+      - monitoring_network
+
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: dochub_node_exporter
+    restart: unless-stopped
+    # NOTA: en Windows/Docker Desktop se quita el mount de la raiz del host
+    # (/:/host) porque la opcion de propagacion "rslave" no es compatible.
+    # Cuando esto corra en el servidor Linux real, restaura estas 2 lineas:
+    #   command:
+    #     - --path.rootfs=/host
+    #   volumes:
+    #     - /:/host:ro,rslave
+    networks:
+      - monitoring_network
+
+networks:
+  app_network:
+  data_network:
+    internal: true
+  monitoring_network:
+    internal: true
+
+volumes:
+  prometheus_data:

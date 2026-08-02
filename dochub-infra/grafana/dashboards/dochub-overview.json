@@ -1,0 +1,90 @@
+{
+  "title": "DocHub - Overview",
+  "uid": "dochub-overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Replicas de la API activas",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "sum(up{job=\"dochub-api\"})", "refId": "A" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Uso de CPU (servidor privado)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 0 },
+      "targets": [
+        {
+          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "refId": "A",
+          "legendFormat": "CPU %"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Memoria libre (servidor privado)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 6 },
+      "targets": [
+        { "expr": "node_memory_MemAvailable_bytes", "refId": "A", "legendFormat": "RAM disponible" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "CPU por contenedor",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{name=~\"dochub_.*\"}[5m]))",
+          "refId": "A",
+          "legendFormat": "{{name}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Servidores backend activos en HAProxy (api_back)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 14 },
+      "targets": [
+        { "expr": "sum(haproxy_server_up{backend=\"api_back\"})", "refId": "A" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Solicitudes por servidor - API (balanceo)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 16 },
+      "targets": [
+        {
+          "expr": "rate(haproxy_server_http_responses_total{backend=\"api_back\"}[5m])",
+          "refId": "A",
+          "legendFormat": "{{server}} - {{code}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Solicitudes por servidor - Web (balanceo)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 24 },
+      "targets": [
+        {
+          "expr": "rate(haproxy_server_http_responses_total{backend=\"web_back\"}[5m])",
+          "refId": "A",
+          "legendFormat": "{{server}} - {{code}}"
+        }
+      ]
+    }
+  ]
+}
