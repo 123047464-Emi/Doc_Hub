@@ -3,6 +3,7 @@ const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 const swaggerUi = require("swagger-ui-express");
 const swaggerJsdoc = require("swagger-jsdoc");
+const client = require("prom-client");
 
 require("dotenv").config();
 
@@ -52,6 +53,13 @@ app.use(limiter);
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
+});
+
+client.collectDefaultMetrics();
+
+app.get("/metrics", async (_req, res) => {
+  res.set("Content-Type", client.register.contentType);
+  res.end(await client.register.metrics());
 });
 
 // Routes

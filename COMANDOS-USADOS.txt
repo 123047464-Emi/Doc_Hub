@@ -1,0 +1,149 @@
+
+# Comandos usados — DocHub Monitoreo, Firewall y Balanceo (Integrante 4)
+
+Todos corridos en PowerShell (Windows), desde `D:\9no\ProyectoIntegrador\...`
+
+---
+
+## 1. Preparación inicial
+
+```powershell
+# Verificar Docker instalado
+docker --version
+docker compose version
+
+# Copiar .env de la API
+cd D:\9no\ProyectoIntegrador\DocHub_Api
+copy .env.example .env
+
+# Ver puerto real de la API (leído del código)
+findstr /i "listen PORT" D:\9no\ProyectoIntegrador\DocHub_Api\server.js
+findstr /i "PORT" D:\9no\ProyectoIntegrador\DocHub_Api\.env
+
+# Ver puerto real del Web (leído del código)
+findstr /i "listen PORT" D:\9no\ProyectoIntegrador\DocHub_Web\server.js
+
+# Ver primeras líneas de un server.js (para saber si usa require o import)
+Get-Content D:\9no\ProyectoIntegrador\DocHub_Api\server.js -Head 5
+```
+
+## 2. Dockerfiles
+
+```powershell
+# Copiar el Dockerfile de ejemplo a DocHub_Web
+copy D:\9no\ProyectoIntegrador\dochub-infra\DocHub_Web.Dockerfile.EJEMPLO D:\9no\ProyectoIntegrador\DocHub_Web\Dockerfile
+
+# .dockerignore para que Windows no pise el node_modules de Linux
+"node_modules`n.env`nnpm-debug.log" | Out-File -Encoding ascii D:\9no\ProyectoIntegrador\DocHub_Api\.dockerignore
+type D:\9no\ProyectoIntegrador\DocHub_Api\.dockerignore
+```
+
+## 3. Levantar el servidor "privado" (API + Web + Prometheus + exporters)
+
+```powershell
+cd D:\9no\ProyectoIntegrador\dochub-infra
+
+# Primer build completo
+docker compose -f docker-compose.private.yml up -d --build
+
+# Reconstruir solo un servicio (ej. despues de editar server.js)
+docker compose -f docker-compose.private.yml up -d --build api1 api2
+
+# Reconstruir SIN cache (cuando algo raro no se actualiza)
+docker compose -f docker-compose.private.yml build --no-cache api1 api2
+docker compose -f docker-compose.private.yml up -d api1 api2
+
+# Apagar y volver a levantar todo el stack limpio
+docker compose -f docker-compose.private.yml down
+docker compose -f docker-compose.private.yml up -d --build
+
+# Reiniciar un solo contenedor (ej. Prometheus, para refrescar DNS)
+docker compose -f docker-compose.private.yml restart prometheus
+```
+
+## 4. Certificado SSL (autofirmado, solo para pruebas locales)
+
+```powershell
+cd D:\9no\ProyectoIntegrador\dochub-infra
+
+# Generar certificado + llave con un contenedor temporal de openssl
+docker run --rm -v ${PWD}/haproxy/certs:/certs alpine/openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /certs/server.key -out /certs/server.crt -subj "/CN=localhost"
+
+# Combinarlos en el .pem que pide HAProxy
+Get-Content haproxy\certs\server.crt, haproxy\certs\server.key | Set-Content haproxy\certs\server.pem
+```
+
+## 5. Levantar el servidor "público" (HAProxy + Grafana)
+
+```powershell
+cd D:\9no\ProyectoIntegrador\dochub-infra
+docker compose -f docker-compose.public.yml up -d
+```
+
+## 6. Verificación / diagnóstico
+
+```powershell
+# Ver todos los contenedores y su estado
+docker ps
+
+# Ver logs de un contenedor (para debug de errores)
+docker logs dochub_api1 --tail 50
+
+# Confirmar que un archivo existe
+dir D:\9no\ProyectoIntegrador\DocHub_Web\Dockerfile
+type D:\9no\ProyectoIntegrador\DocHub_Api\.dockerignore
+```
+
+## 7. URLs para revisar en el navegador
+
+| Qué | URL |
+|---|---|
+| Página real de DocHub (a través de HAProxy) | `https://localhost` (te va a marcar "no seguro" por el certificado autofirmado — dar "Avanzado → Continuar", o escribir `thisisunsafe` en la pantalla de error) |
+| Web réplica 1 directo | `http://localhost:5001` |
+| Web réplica 2 directo | `http://localhost:5002` |
+| Prometheus — targets (¿quién está UP?) | `http://localhost:9090/targets` |
+| Panel de stats de HAProxy (balanceo en vivo) | `http://localhost:8404/stats` |
+| Grafana | `https://localhost/grafana/` (usuario `admin`, contraseña `changeme123`) |
+| Importar dashboard en Grafana | `https://localhost/grafana/dashboard/import` |
+
+## 8. Dashboards de Grafana importados (por ID, no armados desde cero)
+
+| ID | Dashboard |
+|---|---|
+| `1860` | Node Exporter Full (CPU/RAM/disco del servidor) |
+| `893` | Docker and system monitoring (contenedores) |
+| `12693` | HAProxy with Prometheus data (balanceo) |
+
+## 9. Prueba de balanceo de carga (para la demo en vivo)
+
+```powershell
+# Prueba el balanceo de la API
+for ($i=1; $i -le 10; $i++) { curl.exe -sk https://localhost/api/health }
+
+# Prueba el balanceo del Web
+for ($i=1; $i -le 10; $i++) { curl.exe -sk https://localhost/ > $null }
+```
+(Mientras corres esto, ten abierto `http://localhost:8404/stats` en otra pestaña para ver cómo suben los contadores de `api1`/`api2` y `web1`/`web2` alternándose.)
+
+## 10. Firewall (para cuando Integrante 1 tenga las VMs — NO corre en tu laptop)
+
+```bash
+# En el servidor PRIVADO (Linux real, con sudo)
+sudo bash firewall/setup-firewall-private.sh
+
+# En el servidor PUBLICO (Linux real, con sudo)
+sudo bash firewall/setup-firewall-public.sh
+
+# Revisar intentos bloqueados (evidencia para la rúbrica)
+sudo ufw status verbose
+sudo grep "UFW BLOCK" /var/log/ufw.log | tail -20
+```
+
+---
+
+## Notas importantes que descubrimos en el camino
+
+- `DocHub_Web/server.js` **no sirve la página** — es una API mock aparte. El Dockerfile compila con `npm run build` y sirve el resultado con **Nginx**, no con ese `server.js`.
+- `sqlite3` en `DocHub_Api` necesita el `.dockerignore` con `node_modules`, si no, Windows sobreescribe el binario de Linux y truena con "invalid ELF header".
+- En Windows/Docker Desktop, `node_exporter` no soporta el mount `/:/host:ro,rslave` (falla con "not a shared or slave mount") — se quitó esa parte solo para pruebas locales; en el servidor Linux real sí se debe restaurar (está comentado en el archivo).
+- Cuando reconstruyes un contenedor, Prometheus se queda con el DNS viejo en caché — hay que reiniciarlo (`restart prometheus`) o, si persiste, bajar y levantar todo el stack (`down` + `up`).

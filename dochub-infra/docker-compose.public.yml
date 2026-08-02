@@ -1,0 +1,48 @@
+
+# ============================================================
+# SERVIDOR PUBLICO - DocHub
+# Corre en la maquina/VM que SI tiene IP publica.
+# Servicios: HAProxy (balanceador + gateway HTTPS) y Grafana (dashboards)
+# ============================================================
+services:
+  haproxy:
+    image: haproxy:3.2-alpine
+    container_name: dochub_haproxy
+    restart: unless-stopped
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./haproxy/certs:/usr/local/etc/haproxy/certs:ro
+    ports:
+      - "80:80"     # redirige a 443
+      - "443:443"   # HTTPS -> API/Web
+      - "8404:8404" # panel de stats de HAProxy
+      - "8405:8405" # metricas de HAProxy para Prometheus
+    depends_on:
+      - grafana
+    networks:
+      - edge_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: dochub_grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-changeme123}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    expose:
+      - "3000"
+    networks:
+      - edge_network
+
+networks:
+  edge_network:
+
+volumes:
+  grafana_data:
