@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView,
   KeyboardAvoidingView,
@@ -32,19 +32,19 @@ export default function LoginScreen({ onLoginSuccess, onGoToRecover }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [demoUsers, setDemoUsers] = useState([]);
+  const [demoUsers, setDemoUsers] = useState(FALLBACK_USERS);
 
   useEffect(() => {
     let mounted = true;
 
     listDemoUsers()
       .then((users) => {
-        if (mounted && Array.isArray(users)) {
+        if (mounted && Array.isArray(users) && users.length > 0) {
           setDemoUsers(users.filter((user) => user.categoria !== 'Administrador'));
         }
       })
       .catch(() => {
-        if (mounted) setDemoUsers([]);
+        setDemoUsers(FALLBACK_USERS);
       });
 
     return () => {
