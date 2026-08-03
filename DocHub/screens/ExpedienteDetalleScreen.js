@@ -1,5 +1,6 @@
 ﻿import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, SafeAreaView, ScrollView, View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { Alert, SafeAreaView, ScrollView, View, Text, TextInput, Pressable, StyleSheet, Modal, Platform } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import colors from '../theme/colors';
 import fonts from '../theme/fonts';
 import spacing from '../theme/spacing';
@@ -27,6 +28,33 @@ import { Ionicons } from "@expo/vector-icons";
 
 const emptyParticipant = { usuarioId: '', nombre: '', rol: '', categoria: '', email: '', telefono: '' };
 
+const getTodayDateString = () => {
+  const today = new Date();
+  const day = String(today.getDate()).padStart(2, '0');
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const year = today.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+// Convierte un string dd/mm/yyyy a objeto Date. Si no es válido, regresa hoy.
+const parseDateString = (value) => {
+  if (!value) return new Date();
+  const parts = value.split('/');
+  if (parts.length !== 3) return new Date();
+  const [day, month, year] = parts.map(Number);
+  if (!day || !month || !year) return new Date();
+  const date = new Date(year, month - 1, day);
+  return isNaN(date.getTime()) ? new Date() : date;
+};
+
+// Convierte un objeto Date a string dd/mm/yyyy
+const formatDateObject = (date) => {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 export default function ExpedienteDetalleScreen({ route, navigation, user }) {
   const { id, onChanged } = route.params;
   const permisos = { ...(ROLE_PERMISSIONS[user.role] || {}), ...(user.permissions || {}) };
@@ -40,6 +68,9 @@ export default function ExpedienteDetalleScreen({ route, navigation, user }) {
   const [editingParticipantId, setEditingParticipantId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState('Todos');
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -66,12 +97,16 @@ export default function ExpedienteDetalleScreen({ route, navigation, user }) {
       return;
     }
 
+    const fechaInicioValue = (form.fechaInicio || '').trim() || getTodayDateString();
+
+    setForm((prev) => ({ ...prev, fechaInicio: fechaInicioValue }));
+
     setSaving(true);
     try {
       const updated = await updateExpediente(id, {
         tipo: form.tipo.trim(),
         juzgado: form.juzgado.trim(),
-        fechaInicio: form.fechaInicio.trim(),
+        fechaInicio: fechaInicioValue,
         progreso: Number(form.progreso || 0) / 100,
         descripcion: form.descripcion.trim(),
       });
@@ -191,6 +226,24 @@ export default function ExpedienteDetalleScreen({ route, navigation, user }) {
     ]);
   };
 
+  const handleDateChange = (event, selectedDate) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+      if (event.type === 'dismissed') return;
+    }
+    if (selectedDate) {
+      setForm((prev) => ({ ...prev, fechaInicio: formatDateObject(selectedDate) }));
+    }
+  };
+
+  const userRoles = ['Todos', ...Array.from(new Set(usuarios.map((u) => u.categoria).filter(Boolean)))];
+
+  const filteredUsuarios = usuarios.filter((usuario) => {
+    const matchesSearch = !userSearch.trim() || (usuario.nombre || '').toLowerCase().includes(userSearch.trim().toLowerCase());
+    const matchesRole = userRoleFilter === 'Todos' || usuario.categoria === userRoleFilter;
+    return matchesSearch && matchesRole;
+  });
+
   if (!expediente || !form) {
     return (
       <SafeAreaView style={globalStyles.screen}>
@@ -215,7 +268,18 @@ export default function ExpedienteDetalleScreen({ route, navigation, user }) {
             <>
               <FormField label="Tipo de proceso" value={form.tipo} onChangeText={(tipo) => setForm((prev) => ({ ...prev, tipo }))} />
               <FormField label="Juzgado" value={form.juzgado} onChangeText={(juzgado) => setForm((prev) => ({ ...prev, juzgado }))} />
-              <FormField label="Fecha de inicio" value={form.fechaInicio} onChangeText={(fechaInicio) => setForm((prev) => ({ ...prev, fechaInicio }))} />
+
+              <View style={globalStyles.inputGroup}>
+                <Text style={globalStyles.inputLabel}>Fecha de inicio</Text>
+                <Pressable
+                  style={[globalStyles.input, styles.dateInput]}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Text style={styles.dateInputText}>{form.fechaInicio || getTodayDateString()}</Text>
+                  <Ionicons name="calendar-outline" size={20} color={colors.textMuted} />
+                </Pressable>
+              </View>
+
               <FormField label="Progreso (%)" value={form.progreso} onChangeText={(progreso) => setForm((prev) => ({ ...prev, progreso }))} keyboardType="numeric" />
               <FormField label="Descripcion" value={form.descripcion} onChangeText={(descripcion) => setForm((prev) => ({ ...prev, descripcion }))} multiline />
               <AppButton label="Guardar expediente" onPress={saveExpediente} loading={saving} />
@@ -250,24 +314,49 @@ export default function ExpedienteDetalleScreen({ route, navigation, user }) {
           <Card>
             <Text style={styles.formTitle}>{editingParticipantId ? 'Editar participante' : 'Nuevo participante'}</Text>
             <Text style={globalStyles.inputLabel}>Usuario existente</Text>
-            <View style={styles.userChipsRow}>
-              {usuarios.map((usuario) => (
+
+            <TextInput
+              style={globalStyles.input}
+              value={userSearch}
+              onChangeText={setUserSearch}
+              placeholder="Buscar usuario por nombre..."
+              placeholderTextColor={colors.textMuted}
+            />
+
+            <View style={styles.roleFilterRow}>
+              {userRoles.map((role) => (
                 <Pressable
-                  key={usuario.id}
-                  style={[styles.userChip, participantForm.usuarioId === usuario.id && styles.userChipActive]}
-                  onPress={() => setParticipantForm((prev) => ({
-                    ...prev,
-                    usuarioId: usuario.id,
-                    nombre: usuario.nombre,
-                    categoria: usuario.categoria,
-                    rol: prev.rol || usuario.categoria,
-                  }))}
+                  key={role}
+                  style={[styles.roleChip, userRoleFilter === role && styles.roleChipActive]}
+                  onPress={() => setUserRoleFilter(role)}
                 >
-                  <Text style={[styles.userChipText, participantForm.usuarioId === usuario.id && styles.userChipTextActive]}>
-                    {usuario.nombre} ({usuario.categoria})
-                  </Text>
+                  <Text style={[styles.roleChipText, userRoleFilter === role && styles.roleChipTextActive]}>{role}</Text>
                 </Pressable>
               ))}
+            </View>
+
+            <View style={styles.userChipsRow}>
+              {filteredUsuarios.length === 0 ? (
+                <Text style={styles.noResultsText}>No hay usuarios que coincidan con la busqueda.</Text>
+              ) : (
+                filteredUsuarios.map((usuario) => (
+                  <Pressable
+                    key={usuario.id}
+                    style={[styles.userChip, participantForm.usuarioId === usuario.id && styles.userChipActive]}
+                    onPress={() => setParticipantForm((prev) => ({
+                      ...prev,
+                      usuarioId: usuario.id,
+                      nombre: usuario.nombre,
+                      categoria: usuario.categoria,
+                      rol: prev.rol || usuario.categoria,
+                    }))}
+                  >
+                    <Text style={[styles.userChipText, participantForm.usuarioId === usuario.id && styles.userChipTextActive]}>
+                      {usuario.nombre} ({usuario.categoria})
+                    </Text>
+                  </Pressable>
+                ))
+              )}
             </View>
             <FormField label="Nombre" value={participantForm.nombre} onChangeText={() => {}} />
             <FormField label="Rol" value={participantForm.rol} onChangeText={(rol) => setParticipantForm((prev) => ({ ...prev, rol }))} placeholder="Parte solicitante, Abogado, Testigo..." />
@@ -342,6 +431,33 @@ export default function ExpedienteDetalleScreen({ route, navigation, user }) {
         </Card>
 
       </ScrollView>
+
+      {showDatePicker && Platform.OS === 'ios' && (
+        <Modal transparent animationType="fade" visible={showDatePicker}>
+          <Pressable style={styles.datePickerOverlay} onPress={() => setShowDatePicker(false)}>
+            <Pressable style={styles.datePickerCard} onPress={() => {}}>
+              <DateTimePicker
+                value={parseDateString(form.fechaInicio)}
+                mode="date"
+                display="inline"
+                maximumDate={new Date()}
+                onChange={handleDateChange}
+              />
+              <AppButton label="Listo" onPress={() => setShowDatePicker(false)} />
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+
+      {showDatePicker && Platform.OS !== 'ios' && (
+        <DateTimePicker
+          value={parseDateString(form.fechaInicio)}
+          mode="date"
+          display="calendar"
+          maximumDate={new Date()}
+          onChange={handleDateChange}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -350,7 +466,7 @@ function toForm(expediente) {
   return {
     tipo: expediente.tipo || '',
     juzgado: expediente.juzgado || '',
-    fechaInicio: expediente.fechaInicio || '',
+    fechaInicio: expediente.fechaInicio || getTodayDateString(),
     progreso: String(Math.round((expediente.progreso || 0) * 100)),
     descripcion: expediente.descripcion || '',
   };
@@ -402,6 +518,27 @@ const styles = StyleSheet.create({
   },
   progressLabel: { fontSize: fonts.size.xs, color: colors.textMuted },
   multilineInput: { minHeight: 76, textAlignVertical: 'top' },
+  dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dateInputText: {
+    fontSize: fonts.size.md,
+    color: colors.textPrimary,
+  },
+  datePickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  datePickerCard: {
+    backgroundColor: colors.white,
+    borderRadius: spacing.radius.md,
+    padding: spacing.md,
+    width: '90%',
+  },
   actionGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -420,6 +557,21 @@ const styles = StyleSheet.create({
   smallActionText: { color: colors.info, fontSize: fonts.size.xs, fontWeight: fonts.weight.bold },
   smallDangerAction: { paddingHorizontal: spacing.sm, paddingVertical: 5, borderRadius: spacing.radius.sm, backgroundColor: colors.dangerBg },
   smallDangerText: { color: colors.danger, fontSize: fonts.size.xs, fontWeight: fonts.weight.bold },
+  roleFilterRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.sm, marginBottom: spacing.sm },
+  roleChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: spacing.radius.full,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginRight: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  roleChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  roleChipText: { fontSize: fonts.size.sm, color: colors.textSecondary, fontWeight: fonts.weight.semibold },
+  roleChipTextActive: { color: colors.white },
+  noResultsText: { fontSize: fonts.size.sm, color: colors.textMuted, marginBottom: spacing.md },
   userChipsRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: spacing.md },
   userChip: { borderWidth: 1, borderColor: colors.border, borderRadius: spacing.radius.full, paddingHorizontal: spacing.md, paddingVertical: 6, marginRight: spacing.sm, marginBottom: spacing.sm },
   userChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
@@ -427,10 +579,3 @@ const styles = StyleSheet.create({
   userChipTextActive: { color: colors.white },
   chevron: { fontSize: 22, color: colors.textMuted },
 });
-
-
-
-
-
-
-

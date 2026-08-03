@@ -146,7 +146,7 @@ export default function SolicitudesFirmaScreen({ navigation, user }) {
         keyExtractor={(item) => item.id}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={loadSolicitudes} />}
         contentContainerStyle={globalStyles.screenContent}
-        ListEmptyComponent={<EmptyState icon="SIG" title={loading ? 'Cargando solicitudes' : 'Sin solicitudes'} message={loading ? 'Consultando la API...' : `No tienes documentos ${tab.toLowerCase()}.`} />}
+        ListEmptyComponent={<EmptyState icon="create-outline" title={loading ? 'Cargando solicitudes' : 'Sin solicitudes'} message={loading ? 'Consultando la API...' : `No tienes documentos ${tab.toLowerCase()}.`} />}
         renderItem={({ item }) => (
           <Card onPress={() => handleOpen(item)}>
             <View style={globalStyles.cardRow}>

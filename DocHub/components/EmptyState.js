@@ -5,11 +5,12 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import colors from '../theme/colors';
 import fonts from '../theme/fonts';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function EmptyState({ icon = '◌', title = 'Sin resultados', message = '' }) {
   return (
     <View style={styles.container}>
-      <Text style={styles.icon}>{icon}</Text>
+      <Ionicons name={icon} size={36} color={colors.textMuted} style={styles.icon} />
       <Text style={styles.title}>{title}</Text>
       {message ? <Text style={styles.message}>{message}</Text> : null}
     </View>

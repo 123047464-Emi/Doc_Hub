@@ -25,7 +25,7 @@ export default StyleSheet.create({
   // Header de pantalla (barra superior azul)
   header: {
     backgroundColor: colors.primaryDark,
-    paddingTop: spacing.xl,
+    paddingTop: 50,
     paddingBottom: spacing.lg,
     paddingHorizontal: spacing.lg,
   },

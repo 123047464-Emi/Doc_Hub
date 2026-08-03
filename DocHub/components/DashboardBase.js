@@ -20,27 +20,48 @@ const EMPTY_RESUMEN = {
 export default function DashboardBase({ user, navigation, quickActions = [] }) {
   const [resumen, setResumen] = useState(EMPTY_RESUMEN);
   const [actividad, setActividad] = useState([]);
-  const [loading, setLoading] = useState(false);
+  // loading: carga inicial (primer montaje) -> controla el EmptyState "Cargando actividad"
+  const [loading, setLoading] = useState(true);
+  // refreshing: SOLO pull-to-refresh manual -> controla el spinner nativo del RefreshControl
+  const [refreshing, setRefreshing] = useState(false);
 
+  const fetchDashboard = useCallback(async () => {
+    const data = await getDashboard();
+    setResumen(data.resumen || EMPTY_RESUMEN);
+    setActividad(data.actividad || []);
+  }, []);
+
+  // Carga inicial: se dispara una sola vez al montar la pantalla.
   const loadDashboard = useCallback(async () => {
     setLoading(true);
 
     try {
-      const data = await getDashboard();
-      setResumen(data.resumen || EMPTY_RESUMEN);
-      setActividad(data.actividad || []);
-
+      await fetchDashboard();
     } catch (err) {
       Alert.alert(
         'No se pudo cargar resumen',
         err.message || 'Revisa la conexión con la API.'
       );
-
     } finally {
       setLoading(false);
     }
+  }, [fetchDashboard]);
 
-  }, []);
+  // Pull-to-refresh manual: el usuario jala la lista.
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+
+    try {
+      await fetchDashboard();
+    } catch (err) {
+      Alert.alert(
+        'No se pudo actualizar',
+        err.message || 'Revisa la conexión con la API.'
+      );
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchDashboard]);
 
   useEffect(() => {
     loadDashboard();
@@ -62,8 +83,8 @@ export default function DashboardBase({ user, navigation, quickActions = [] }) {
         contentContainerStyle={globalStyles.screenContent}
         refreshControl={
           <RefreshControl 
-            refreshing={loading} 
-            onRefresh={loadDashboard} 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
           />
         }
       >

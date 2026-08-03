@@ -45,6 +45,7 @@ services:
       - ../DocHub_Api/.env
     ports:
       - "3001:3000"   # ajusta 3000 si tu server.js escucha en otro puerto
+      - "3000:3000"
     networks:
       - app_network
       - data_network

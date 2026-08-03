@@ -1,5 +1,6 @@
 ﻿import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, Pressable, RefreshControl, SafeAreaView, Text, TextInput, View, StyleSheet } from 'react-native';
+import { Alert, FlatList, Pressable, RefreshControl, SafeAreaView, Text, TextInput, View, StyleSheet, Modal, Platform } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import colors from '../theme/colors';
 import fonts from '../theme/fonts';
 import spacing from '../theme/spacing';
@@ -12,9 +13,38 @@ import EmptyState from '../components/EmptyState';
 import AppButton from '../components/AppButton';
 import { ROLE_PERMISSIONS } from '../navigation/roleConfig';
 import { createExpediente, listExpedientes } from '../services/api';
-import {icons} from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
+
 const FILTERS = ['Todos', 'Activo', 'Pendiente', 'Cerrado'];
-const initialForm = { id: '', tipo: '', juzgado: '', fechaInicio: '', descripcion: '' };
+
+const getTodayDateString = () => {
+  const today = new Date();
+  const day = String(today.getDate()).padStart(2, '0');
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const year = today.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+// Convierte un string dd/mm/yyyy a objeto Date. Si no es válido, regresa hoy.
+const parseDateString = (value) => {
+  if (!value) return new Date();
+  const parts = value.split('/');
+  if (parts.length !== 3) return new Date();
+  const [day, month, year] = parts.map(Number);
+  if (!day || !month || !year) return new Date();
+  const date = new Date(year, month - 1, day);
+  return isNaN(date.getTime()) ? new Date() : date;
+};
+
+// Convierte un objeto Date a string dd/mm/yyyy
+const formatDateObject = (date) => {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+const getInitialForm = () => ({ id: '', tipo: '', juzgado: '', fechaInicio: getTodayDateString(), descripcion: '' });
 
 export default function ExpedientesListScreen({ navigation, user }) {
   const permisos = { ...(ROLE_PERMISSIONS[user.role] || {}), ...(user.permissions || {}) };
@@ -22,8 +52,9 @@ export default function ExpedientesListScreen({ navigation, user }) {
   const [expedientes, setExpedientes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState(getInitialForm);
   const [saving, setSaving] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const loadExpedientes = useCallback(async () => {
     setLoading(true);
@@ -43,6 +74,27 @@ export default function ExpedientesListScreen({ navigation, user }) {
 
   const data = expedientes.filter((e) => filter === 'Todos' || e.estado === filter);
 
+  const toggleForm = () => {
+    setShowForm((prev) => {
+      const next = !prev;
+      if (next) {
+        // Al abrir el formulario, siempre arrancamos con la fecha de hoy.
+        setForm(getInitialForm());
+      }
+      return next;
+    });
+  };
+
+  const handleDateChange = (event, selectedDate) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+      if (event.type === 'dismissed') return;
+    }
+    if (selectedDate) {
+      setForm((prev) => ({ ...prev, fechaInicio: formatDateObject(selectedDate) }));
+    }
+  };
+
   const submitExpediente = async () => {
     if (!form.id.trim() || !form.tipo.trim()) {
       Alert.alert('Datos requeridos', 'Captura el numero de expediente y el tipo de proceso.');
@@ -55,10 +107,10 @@ export default function ExpedientesListScreen({ navigation, user }) {
         id: form.id.trim(),
         tipo: form.tipo.trim(),
         juzgado: form.juzgado.trim(),
-        fechaInicio: form.fechaInicio.trim() || undefined,
+        fechaInicio: form.fechaInicio.trim() || getTodayDateString(),
         descripcion: form.descripcion.trim(),
       });
-      setForm(initialForm);
+      setForm(getInitialForm());
       setShowForm(false);
       setExpedientes((prev) => [created, ...prev]);
       Alert.alert('Expediente creado', 'El expediente se registro correctamente.');
@@ -76,7 +128,7 @@ export default function ExpedientesListScreen({ navigation, user }) {
         subtitle={`${expedientes.length} expedientes registrados`}
         onBack={() => navigation.goHome?.()}
         rightIcon={permisos.puedeAdministrarExpedientes ? 'add' : null}
-        onRightPress={() => setShowForm((value) => !value)}
+        onRightPress={toggleForm}
       />
 
       <View style={styles.filterRow}>
@@ -103,7 +155,18 @@ export default function ExpedientesListScreen({ navigation, user }) {
               <FormField label="Numero de expediente" value={form.id} onChangeText={(id) => setForm((prev) => ({ ...prev, id }))} placeholder="DV-2026-0001" />
               <FormField label="Tipo de proceso" value={form.tipo} onChangeText={(tipo) => setForm((prev) => ({ ...prev, tipo }))} placeholder="Divorcio voluntario" />
               <FormField label="Juzgado" value={form.juzgado} onChangeText={(juzgado) => setForm((prev) => ({ ...prev, juzgado }))} placeholder="Juzgado 3 Familiar" />
-              <FormField label="Fecha de inicio" value={form.fechaInicio} onChangeText={(fechaInicio) => setForm((prev) => ({ ...prev, fechaInicio }))} placeholder="2026-07-31" />
+
+              <View style={globalStyles.inputGroup}>
+                <Text style={globalStyles.inputLabel}>Fecha de inicio</Text>
+                <Pressable
+                  style={[globalStyles.input, styles.dateInput]}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Text style={styles.dateInputText}>{form.fechaInicio || getTodayDateString()}</Text>
+                  <Ionicons name="calendar-outline" size={20} color={colors.textMuted} />
+                </Pressable>
+              </View>
+
               <FormField label="Descripcion" value={form.descripcion} onChangeText={(descripcion) => setForm((prev) => ({ ...prev, descripcion }))} placeholder="Notas del caso" multiline />
               <AppButton label="Crear expediente" onPress={submitExpediente} loading={saving} />
             </Card>
@@ -139,6 +202,33 @@ export default function ExpedientesListScreen({ navigation, user }) {
           </Card>
         )}
       />
+
+      {showDatePicker && Platform.OS === 'ios' && (
+        <Modal transparent animationType="fade" visible={showDatePicker}>
+          <Pressable style={styles.datePickerOverlay} onPress={() => setShowDatePicker(false)}>
+            <Pressable style={styles.datePickerCard} onPress={() => {}}>
+              <DateTimePicker
+                value={parseDateString(form.fechaInicio)}
+                mode="date"
+                display="inline"
+                maximumDate={new Date()}
+                onChange={handleDateChange}
+              />
+              <AppButton label="Listo" onPress={() => setShowDatePicker(false)} />
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+
+      {showDatePicker && Platform.OS !== 'ios' && (
+        <DateTimePicker
+          value={parseDateString(form.fechaInicio)}
+          mode="date"
+          display="calendar"
+          maximumDate={new Date()}
+          onChange={handleDateChange}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -194,7 +284,25 @@ const styles = StyleSheet.create({
   },
   footerText: { fontSize: fonts.size.xs, color: colors.textMuted, flex: 1 },
   multilineInput: { minHeight: 76, textAlignVertical: 'top' },
+  dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dateInputText: {
+    fontSize: fonts.size.md,
+    color: colors.textPrimary,
+  },
+  datePickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  datePickerCard: {
+    backgroundColor: colors.white,
+    borderRadius: spacing.radius.md,
+    padding: spacing.md,
+    width: '90%',
+  },
 });
-
-
-

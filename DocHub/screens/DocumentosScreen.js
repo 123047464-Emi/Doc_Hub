@@ -154,7 +154,7 @@ export default function DocumentosScreen({ route, navigation, user }) {
             <Card onPress={() => handleOpen(item)}>
               <View style={globalStyles.cardRow}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                  <IconCircle symbol={iconInfo.symbol} bg={iconInfo.bg} fg={iconInfo.fg} size={40} />
+                  <Ionicons name={iconInfo.symbol} size={24} color="black" />
                   <View style={{ marginLeft: spacing.md, flex: 1 }}>
                     <Text style={styles.docName} numberOfLines={1}>{item.nombre}</Text>
                     <Text style={styles.docMeta}>{item.version} - {item.tamanoTexto}</Text>
