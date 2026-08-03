@@ -14,11 +14,12 @@ import {
   Settings,
   LogOut,
   Scale,
-  Lock
+  Lock,
+  X
 } from 'lucide-react';
 
 export default function Sidebar() {
-  const { activeTab, setActiveTab, user, logout, visibleDocuments } = useApp();
+  const { activeTab, setActiveTab, user, logout, visibleDocuments, isMobileMenuOpen, setIsMobileMenuOpen } = useApp();
 
   const isAdmin = user?.role === 'Administrador';
 
@@ -36,45 +37,74 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside style={{
-      width: '280px',
-      height: '100vh',
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      backgroundColor: 'var(--primary-dark)',
-      color: '#FFFFFF',
-      display: 'flex',
-      flexDirection: 'column',
-      zIndex: 50,
-      borderRight: '1px solid rgba(255,255,255,0.1)',
-      boxShadow: '4px 0 20px rgba(0,0,0,0.15)'
-    }}>
-      {/* Brand Header with Official Logo */}
-      <div style={{
-        padding: '20px 20px',
+    <>
+      {/* Mobile Backdrop Overlay */}
+      <div
+        className={`mobile-sidebar-backdrop ${isMobileMenuOpen ? 'open' : ''}`}
+        onClick={() => setIsMobileMenuOpen(false)}
+      />
+
+      <aside className={`app-sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`} style={{
+        width: '280px',
+        height: '100vh',
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        backgroundColor: 'var(--primary-dark)',
+        color: '#FFFFFF',
         display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        borderBottom: '1px solid rgba(255,255,255,0.08)'
+        flexDirection: 'column',
+        zIndex: 50,
+        borderRight: '1px solid rgba(255,255,255,0.1)',
+        boxShadow: '4px 0 20px rgba(0,0,0,0.15)'
       }}>
-        <img
-          src="/logo.jpeg"
-          alt="DocHub Logo"
-          style={{
-            width: '44px',
-            height: '44px',
-            borderRadius: '50%',
-            objectFit: 'cover',
-            border: '2px solid var(--accent)',
-            boxShadow: '0 4px 12px rgba(47,111,237,0.4)'
-          }}
-        />
-        <div>
-          <h1 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.2, margin: 0 }}>DocHub Legal</h1>
-          <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>Control Jurídico Notarial</span>
+        {/* Brand Header with Official Logo */}
+        <div style={{
+          padding: '20px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: '1px solid rgba(255,255,255,0.08)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <img
+              src="/logo.jpeg"
+              alt="DocHub Logo"
+              style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: '2px solid var(--accent)',
+                boxShadow: '0 4px 12px rgba(47,111,237,0.4)'
+              }}
+            />
+            <div>
+              <h1 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.2, margin: 0 }}>DocHub Legal</h1>
+              <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>Control Jurídico Notarial</span>
+            </div>
+          </div>
+
+          {/* Close drawer button on mobile */}
+          <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="mobile-close-btn"
+            style={{
+              background: 'rgba(255,255,255,0.1)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#FFFFFF',
+              cursor: 'pointer'
+            }}
+          >
+            <X size={18} />
+          </button>
         </div>
-      </div>
 
       {/* Navigation Items */}
       <div style={{ flex: 1, padding: '16px 12px', overflowY: 'auto' }}>
@@ -195,5 +225,6 @@ export default function Sidebar() {
         </div>
       </div>
     </aside>
+    </>
   );
 }

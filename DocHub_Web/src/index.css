@@ -231,3 +231,178 @@ h1, h2, h3, h4, h5, h6 {
 .pulse-glow {
   animation: pulseGlow 2s infinite ease-in-out;
 }
+
+/* ==========================================
+   RESPONSIVE DESIGN SYSTEM & MEDIA QUERIES
+   ========================================== */
+
+/* Mobile Hamburger Menu Toggle Button */
+.mobile-menu-btn {
+  display: none;
+  background: var(--bg-app);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: var(--radius-full);
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+.mobile-menu-btn:hover {
+  background: var(--border-color);
+}
+
+.mobile-close-btn {
+  display: none;
+}
+
+/* Mobile Sidebar Backdrop Overlay */
+.mobile-sidebar-backdrop {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 45;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.mobile-sidebar-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Responsive Table Wrapper */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-md);
+}
+
+/* Responsive Grids & Layout Utilities */
+.grid-responsive-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.grid-responsive-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+/* Tablet & Mobile Screens (<= 1024px) */
+@media (max-width: 1024px) {
+  .mobile-menu-btn {
+    display: flex;
+  }
+  .mobile-close-btn {
+    display: flex;
+  }
+  .mobile-sidebar-backdrop {
+    display: block;
+  }
+
+  /* Transform Sidebar into collapsible Mobile Drawer */
+  .app-sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 6px 0 30px rgba(0, 0, 0, 0.3) !important;
+  }
+  .app-sidebar.mobile-open {
+    transform: translateX(0) !important;
+  }
+
+  /* Reset layout margins for full-width views */
+  .app-topbar {
+    left: 0 !important;
+    padding: 0 16px !important;
+  }
+  .app-main-wrapper {
+    margin-left: 0 !important;
+  }
+  .app-main-content {
+    padding: 20px 16px !important;
+  }
+
+  /* Stack Dashboard / View Split Panels */
+  div[style*="gridTemplateColumns: 2fr 1fr"],
+  div[style*="grid-template-columns: 2fr 1fr"],
+  div[style*="gridTemplateColumns: 1fr 1fr"],
+  div[style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Phones & Small Mobile Devices (<= 768px) */
+@media (max-width: 768px) {
+  /* Topbar Adjustments */
+  .app-topbar {
+    height: 64px !important;
+  }
+  .app-main-content {
+    margin-top: 64px !important;
+    padding: 14px 12px !important;
+  }
+
+  /* TopBar Search & Controls */
+  .search-bar-container {
+    max-width: 200px !important;
+  }
+  .search-bar-container input {
+    font-size: 0.78rem !important;
+  }
+
+  .topbar-right-controls {
+    gap: 8px !important;
+  }
+  .topbar-right-controls button span {
+    display: none; /* Hide button text, keep icons clean on mobile */
+  }
+
+  /* Cards & Modal Responsiveness */
+  .card-glass {
+    padding: 16px !important;
+  }
+
+  /* General Table Text Sizing */
+  table {
+    font-size: 0.8rem !important;
+  }
+  th, td {
+    padding: 10px 12px !important;
+  }
+}
+
+/* Extra Small Phones (<= 480px) */
+@media (max-width: 480px) {
+  .search-bar-container {
+    max-width: 130px !important;
+  }
+  .topbar-right-controls div[title="Opciones de perfil de abogado"] div {
+    display: none; /* Hide user name string on small header */
+  }
+
+  /* Modals on phones */
+  div[style*="width: '95vw'"],
+  div[style*="width: 95vw"] {
+    width: 98vw !important;
+    height: 96vh !important;
+  }
+
+  /* Responsive header banners & buttons */
+  div[style*="display: 'flex'"],
+  div[style*="display: flex"] {
+    flex-wrap: wrap;
+  }
+}
+
+

@@ -32,14 +32,21 @@ export function AppProvider({ children }) {
     }
   }, [usersList]);
 
-  // Auth state - default to first Web user (Admin or Juez)
-  const [user, setUser] = useState(() => {
-    return usersList.find(u => u.role === 'Administrador' || u.role === 'Juez') || USERS[0];
-  });
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  // Auth state - default to unauthenticated for security (requires login first)
+  const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Navigation active screen
   const [activeTab, setActiveTab] = useState('dashboard');
+  
+  // Mobile drawer menu state
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const toggleMobileMenu = () => setIsMobileMenuOpen(prev => !prev);
+
+  // Close mobile menu on tab change
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [activeTab]);
   
   // Documents state persisted in localStorage
   const [documents, setDocuments] = useState(() => {
@@ -244,6 +251,7 @@ export function AppProvider({ children }) {
 
   const logout = () => {
     setIsAuthenticated(false);
+    setUser(null);
     showToast('Sesión de abogado cerrada correctamente', 'info');
     
     const logoutLog = {
@@ -392,6 +400,9 @@ export function AppProvider({ children }) {
       logout,
       activeTab,
       setActiveTab,
+      isMobileMenuOpen,
+      setIsMobileMenuOpen,
+      toggleMobileMenu,
       documents,
       visibleDocuments,
       selectedDoc,

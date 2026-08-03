@@ -82,12 +82,12 @@ function MainContent() {
       <Sidebar />
 
       {/* Main Wrapper */}
-      <div style={{ flex: 1, marginLeft: '280px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div className="app-main-wrapper" style={{ flex: 1, marginLeft: '280px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {/* Fixed Top Bar */}
         <TopBar />
 
         {/* View Scrollable Workspace Container */}
-        <main style={{ marginTop: '70px', padding: '32px 36px', minHeight: 'calc(100vh - 70px)', overflowY: 'auto' }}>
+        <main className="app-main-content" style={{ marginTop: '70px', padding: '32px 36px', minHeight: 'calc(100vh - 70px)', overflowY: 'auto' }}>
           {renderView()}
         </main>
       </div>

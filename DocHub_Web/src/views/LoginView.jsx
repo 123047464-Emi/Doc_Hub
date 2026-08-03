@@ -61,14 +61,14 @@ export default function LoginView() {
             DocHub Legal
           </h2>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Acceso Exclusivo para Administradores y Jueces (UPQ)
+            Acceso Exclusivo para Administradores y Jueces
           </p>
         </div>
 
         {/* Quick User Selector */}
         <div style={{ marginBottom: '24px' }}>
           <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '10px', textAlign: 'center' }}>
-            Seleccionar Usuario de Prueba (Web)
+            Seleccionar Usuario de Prueba
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
             {USERS.filter(u => u.role === 'Administrador' || u.role === 'Juez').map((u) => (
@@ -144,11 +144,6 @@ export default function LoginView() {
             Iniciar Sesión <ArrowRight size={16} />
           </button>
         </form>
-
-        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          <ShieldCheck size={14} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
-          Acceso seguro institucional · Universidad
-        </div>
       </div>
     </div>
   );

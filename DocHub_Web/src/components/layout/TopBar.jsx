@@ -16,7 +16,8 @@ import {
   X,
   LogOut,
   Settings,
-  ShieldCheck
+  ShieldCheck,
+  Menu
 } from 'lucide-react';
 
 export default function TopBar() {
@@ -26,6 +27,7 @@ export default function TopBar() {
     user,
     logout,
     setActiveTab,
+    toggleMobileMenu,
     searchQuery,
     setSearchQuery,
     notifications,
@@ -54,7 +56,7 @@ export default function TopBar() {
     : [];
 
   return (
-    <header style={{
+    <header className="app-topbar" style={{
       height: '70px',
       position: 'fixed',
       top: 0,
@@ -70,19 +72,29 @@ export default function TopBar() {
       boxShadow: 'var(--shadow-sm)',
       transition: 'background-color var(--transition-normal)'
     }}>
-      {/* Global Search Bar */}
-      <div style={{ position: 'relative', width: '380px' }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          backgroundColor: 'var(--bg-app)',
-          border: `1px solid ${isSearchFocused ? 'var(--accent)' : 'var(--border-color)'}`,
-          borderRadius: 'var(--radius-full)',
-          padding: '8px 16px',
-          transition: 'all 0.2s ease',
-          boxShadow: isSearchFocused ? '0 0 0 3px rgba(47,111,237,0.15)' : 'none'
-        }}>
+      {/* Left Section: Mobile Menu Toggle & Global Search Bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, maxWidth: '520px' }}>
+        <button
+          onClick={toggleMobileMenu}
+          className="mobile-menu-btn"
+          title="Abrir menú de navegación"
+          aria-label="Abrir menú de navegación"
+        >
+          <Menu size={22} />
+        </button>
+
+        <div className="search-bar-container" style={{ position: 'relative', width: '100%', maxWidth: '380px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            backgroundColor: 'var(--bg-app)',
+            border: `1px solid ${isSearchFocused ? 'var(--accent)' : 'var(--border-color)'}`,
+            borderRadius: 'var(--radius-full)',
+            padding: '8px 16px',
+            transition: 'all 0.2s ease',
+            boxShadow: isSearchFocused ? '0 0 0 3px rgba(47,111,237,0.15)' : 'none'
+          }}>
           <Search size={18} color="var(--text-muted)" />
           <input
             type="text"
@@ -168,10 +180,11 @@ export default function TopBar() {
             )}
           </div>
         )}
+        </div>
       </div>
 
       {/* Right Controls Bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div className="topbar-right-controls" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         {/* Upload Document Primary Button (Juez Only) */}
         {user?.role === 'Juez' && (
           <button
